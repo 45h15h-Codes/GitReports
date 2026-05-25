@@ -1,0 +1,21 @@
+{
+  "name": "gitreport",
+  "version": "0.0.1",
+  "private": true,
+  "description": "GitReport v3.0 — Developer Identity Engine & Monthly Engineering Intelligence Platform",
+  "scripts": {
+    "dev": "pnpm --parallel -r dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "db:migrate": "pnpm --filter @gitreport/api db:migrate",
+    "db:generate": "pnpm --filter @gitreport/api db:generate"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}
