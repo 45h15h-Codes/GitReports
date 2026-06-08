@@ -6,7 +6,8 @@ import { db } from '../db/client';
 import { users } from '../db/schema';
 import { eq } from 'drizzle-orm';
 
-import '../types/session';
+// Note: session type augmentation is declared in src/types/session.d.ts
+// and picked up automatically by TypeScript via tsconfig.json includes.
 
 const authRoutes: FastifyPluginAsync = async (fastify) => {
 
@@ -40,7 +41,12 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
 
     // CSRF state validation
     const storedState = req.session.get('oauthState');
-    if (!state || !storedState || state !== storedState) {
+    if (!state || !storedState) {
+      return reply.status(400).send({ error: 'Invalid OAuth state — possible CSRF attack' });
+    }
+    const a = Buffer.from(state);
+    const b = Buffer.from(storedState);
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
       return reply.status(400).send({ error: 'Invalid OAuth state — possible CSRF attack' });
     }
 
@@ -87,6 +93,7 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
         .returning({ id: users.id });
 
       // Establish authenticated session
+      await req.session.regenerate();
       req.session.set('userId', user.id);
       req.session.set('oauthState', undefined); // clear state
       await req.session.save();

@@ -1,122 +1,92 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import viteLogo from "./assets/vite.svg";
-import heroImg from "./assets/hero.png";
-import "./App.css";
+import { useState, useEffect }           from 'react'
+import { BrowserRouter, Routes, Route }  from 'react-router-dom'
+import { Sun, Moon }                     from '@phosphor-icons/react'
+import { AuthProvider }                  from './context/AuthContext'
+import { ProtectedRoute }                from './components/ProtectedRoute'
+import { Sidebar }                       from './components/Sidebar'
+import { Dashboard }                     from './pages/Dashboard'
+import { SharedReport }                  from './pages/SharedReport'
+import { ChallengePage }                 from './pages/ChallengePage'
+import { Login }                         from './pages/Login'
+import './index.css'
 
-function App() {
-  const [count, setCount] = useState(0);
+// ── Theme hook — persisted in localStorage ────────────────────────────────
+function useTheme() {
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    const stored = localStorage.getItem('gr-theme')
+    if (stored === 'light' || stored === 'dark') return stored
+    return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
+  })
 
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem('gr-theme', theme)
+  }, [theme])
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  );
+  const toggle = () => setTheme(t => (t === 'dark' ? 'light' : 'dark'))
+  return { theme, toggle }
 }
 
-export default App;
+export default function App() {
+  const { theme, toggle } = useTheme()
+
+  return (
+    <BrowserRouter>
+      {/* AuthProvider inside BrowserRouter so it can useNavigate */}
+      <AuthProvider>
+        <Routes>
+          {/* ── Public routes — no auth, no sidebar ─────────────────────── */}
+          <Route path="/login"                          element={<Login />}         />
+          <Route path="/u/:username/:period"            element={<SharedReport />}  />
+          <Route path="/challenge/:username/:period"    element={<ChallengePage />} />
+
+          {/* ── Authenticated app shell — sidebar + main ─────────────────── */}
+          <Route
+            path="/*"
+            element={
+              <ProtectedRoute>
+                <div
+                  className="flex min-h-screen"
+                  style={{ background: 'var(--bg-base)' }}
+                >
+                  <Sidebar />
+                  <main className="flex-1 ml-[260px] overflow-x-hidden relative">
+                    {/* Theme toggle — top-right corner */}
+                    <button
+                      id="theme-toggle"
+                      onClick={toggle}
+                      aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+                      className="fixed top-4 right-5 z-50 flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200"
+                      style={{
+                        background: 'var(--bg-elevated)',
+                        border:     '1px solid var(--border-default)',
+                        color:      'var(--text-secondary)',
+                        cursor:     'pointer',
+                      }}
+                      onMouseEnter={e => {
+                        (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-strong)'
+                        ;(e.currentTarget as HTMLButtonElement).style.color      = 'var(--text-primary)'
+                      }}
+                      onMouseLeave={e => {
+                        (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-default)'
+                        ;(e.currentTarget as HTMLButtonElement).style.color      = 'var(--text-secondary)'
+                      }}
+                    >
+                      {theme === 'dark'
+                        ? <Sun  size={15} weight="duotone" />
+                        : <Moon size={15} weight="duotone" />}
+                    </button>
+
+                    <Routes>
+                      <Route path="/" element={<Dashboard />} />
+                    </Routes>
+                  </main>
+                </div>
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
+  )
+}

@@ -54,6 +54,10 @@ const PAYLOAD: AiPayload = {
   commit_size_dist: { tiny: 10, small: 60, medium: 20, large: 10 },
   focus_score: 0.72,
   developer_persona: "The Shipper",
+  lines_added_total: 2400,
+  prs_merged_total: 9,
+  repos_touched: 2,
+  daily_commits: [0, 0, 0, 5, 10],
   prev_period_summary: null,
 };
 

@@ -104,6 +104,12 @@ export interface AiPayload {
   /** Deterministic from category_signal distribution — LLM reads, never sets */
   developer_persona: DeveloperPersona;
 
+  // ── Derived totals computed by aggregation engine ───────────────────────────
+  lines_added_total: number;
+  prs_merged_total:  number;
+  repos_touched:     number;
+  daily_commits:     number[];
+
   // ── Longitudinal context ────────────────────────────────────────────────────
   /** Null on first-ever report */
   prev_period_summary: PrevPeriodSummary | null;

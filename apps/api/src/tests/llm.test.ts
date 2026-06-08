@@ -39,6 +39,10 @@ const SAMPLE_PAYLOAD: AiPayload = {
   commit_size_dist: { tiny: 40, small: 120, medium: 60, large: 27 },
   focus_score:      0.68,
   developer_persona: 'The Architect',
+  lines_added_total: 3400,
+  prs_merged_total: 11,
+  repos_touched: 1,
+  daily_commits: [0, 0, 0, 5, 10],
   prev_period_summary: {
     total_commits:     209,
     focus_score:       0.82,
@@ -100,14 +104,16 @@ const MOCK_NARRATIVE_TEXT =
 
 // Mock the @anthropic-ai/sdk module (top-level, hoisted by vitest)
 vi.mock('@anthropic-ai/sdk', () => ({
-  default: vi.fn().mockImplementation(() => ({
-    messages: {
-      create: vi.fn().mockResolvedValue({
-        content: [{ type: 'text', text: MOCK_NARRATIVE_TEXT }],
-        usage:   { input_tokens: 420, output_tokens: 32 },
-      }),
-    },
-  })),
+  default: vi.fn().mockImplementation(function () {
+    return {
+      messages: {
+        create: vi.fn().mockResolvedValue({
+          content: [{ type: 'text', text: MOCK_NARRATIVE_TEXT }],
+          usage:   { input_tokens: 420, output_tokens: 32 },
+        }),
+      },
+    };
+  }),
 }));
 
 // ── generateNarrative: mocked Claude API ─────────────────────────────────────
@@ -129,14 +135,16 @@ describe('generateNarrative', () => {
 
   it('throws when the API returns no text block', async () => {
     const Anthropic = (await import('@anthropic-ai/sdk')).default as unknown as import('vitest').Mock;
-    Anthropic.mockImplementationOnce(() => ({
-      messages: {
-        create: vi.fn().mockResolvedValue({
-          content: [{ type: 'tool_use', id: 'tu_1', name: 'dummy', input: {} }],
-          usage:   { input_tokens: 10, output_tokens: 0 },
-        }),
-      },
-    }));
+    Anthropic.mockImplementationOnce(function () {
+      return {
+        messages: {
+          create: vi.fn().mockResolvedValue({
+            content: [{ type: 'tool_use', id: 'tu_1', name: 'dummy', input: {} }],
+            usage:   { input_tokens: 10, output_tokens: 0 },
+          }),
+        },
+      };
+    });
 
     const { generateNarrative } = await import('../services/narrative/llm');
     await expect(generateNarrative(SAMPLE_PAYLOAD)).rejects.toThrow(
@@ -146,14 +154,16 @@ describe('generateNarrative', () => {
 
   it('throws when the API returns an empty narrative', async () => {
     const Anthropic = (await import('@anthropic-ai/sdk')).default as unknown as import('vitest').Mock;
-    Anthropic.mockImplementationOnce(() => ({
-      messages: {
-        create: vi.fn().mockResolvedValue({
-          content: [{ type: 'text', text: '   ' }],
-          usage:   { input_tokens: 10, output_tokens: 1 },
-        }),
-      },
-    }));
+    Anthropic.mockImplementationOnce(function () {
+      return {
+        messages: {
+          create: vi.fn().mockResolvedValue({
+            content: [{ type: 'text', text: '   ' }],
+            usage:   { input_tokens: 10, output_tokens: 1 },
+          }),
+        },
+      };
+    });
 
     const { generateNarrative } = await import('../services/narrative/llm');
     await expect(generateNarrative(SAMPLE_PAYLOAD)).rejects.toThrow(

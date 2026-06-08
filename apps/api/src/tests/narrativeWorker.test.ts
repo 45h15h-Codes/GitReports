@@ -18,15 +18,19 @@ import type { AiPayload } from "../services/aggregation/types";
 
 // Mock BullMQ — we test the job processor logic, not BullMQ internals
 vi.mock("bullmq", () => {
-  const Queue = vi.fn().mockImplementation(() => ({
-    add: vi.fn().mockResolvedValue({ id: "job-1" }),
-  }));
+  const Queue = vi.fn().mockImplementation(function () {
+    return {
+      add: vi.fn().mockResolvedValue({ id: "job-1" }),
+    };
+  });
   const Worker = vi
     .fn()
-    .mockImplementation((_name: string, processor: unknown) => ({
-      _processor: processor, // expose for testing
-      on: vi.fn(),
-    }));
+    .mockImplementation(function (_name: string, processor: unknown) {
+      return {
+        _processor: processor, // expose for testing
+        on: vi.fn(),
+      };
+    });
   return { Queue, Worker };
 });
 
@@ -66,6 +70,10 @@ const SAMPLE_PAYLOAD: AiPayload = {
   commit_size_dist: { tiny: 10, small: 20, medium: 15, large: 5 },
   focus_score: 0.9,
   developer_persona: "The Maintainer",
+  lines_added_total: 1000,
+  prs_merged_total: 5,
+  repos_touched: 0,
+  daily_commits: [0, 0, 0, 5, 10],
   prev_period_summary: null,
 };
 

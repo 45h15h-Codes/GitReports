@@ -271,12 +271,29 @@ export function aggregateMonthlyData(input: AggregationInput): AiPayload {
 
   // Global metrics
   const totalCommits    = repoAggregates.reduce((s, r) => s + r.commits, 0);
+  const linesAddedTotal = repoAggregates.reduce((s, r) => s + r.lines_added, 0);
+  const prsMergedTotal  = repoAggregates.reduce((s, r) => s + r.prs_merged, 0);
+  const reposTouched    = repoAggregates.length;
+
   const { longest, current } = computeStreaks(activeDays);
   const peakHourBlock   = computePeakHourBlock(allCommitDates);
   const commitSizeDist  = computeCommitSizeDist(allChangeTotals);
   const focusScore      = computeFocusScore(repoAggregates);
   const persona         = derivePersona(repoAggregates);
   const languages       = buildLanguageBreakdown(repoAggregates);
+
+  // Build daily_commits array for the month
+  const [yearStr, monthStr] = period.split('-');
+  const year = parseInt(yearStr, 10);
+  const month = parseInt(monthStr, 10);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const dailyCommits = new Array(daysInMonth).fill(0);
+  for (const dateStr of allCommitDates) {
+    const day = parseInt(dateStr.slice(8, 10), 10);
+    if (day >= 1 && day <= daysInMonth) {
+      dailyCommits[day - 1]++;
+    }
+  }
 
   return {
     payload_version:     PAYLOAD_VERSION,
@@ -291,6 +308,10 @@ export function aggregateMonthlyData(input: AggregationInput): AiPayload {
     commit_size_dist:    commitSizeDist,
     focus_score:         focusScore,
     developer_persona:   persona,
+    lines_added_total:   linesAddedTotal,
+    prs_merged_total:    prsMergedTotal,
+    repos_touched:       reposTouched,
+    daily_commits:       dailyCommits,
     prev_period_summary: prevPeriodSummary,
   };
 }

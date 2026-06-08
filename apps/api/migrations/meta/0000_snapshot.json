@@ -1,7 +1,5 @@
 {
-  "id": "ae725f2b-2c59-453d-b82c-abebdcfa955a",
-  "prevId": "00000000-0000-0000-0000-000000000000",
-  "version": "6",
+  "version": "7",
   "dialect": "postgresql",
   "tables": {
     "public.challenge_links": {
@@ -68,38 +66,49 @@
       },
       "indexes": {
         "challenge_links_token_idx": {
-          "name": "challenge_links_token_idx",
           "columns": [
-            "token"
+            {
+              "expression": "token",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "with": {},
+          "name": "challenge_links_token_idx",
+          "isUnique": false,
+          "method": "btree",
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "challenge_links_challenger_user_id_users_id_fk": {
           "name": "challenge_links_challenger_user_id_users_id_fk",
           "tableFrom": "challenge_links",
-          "tableTo": "users",
           "columnsFrom": [
             "challenger_user_id"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "challenge_links_token_unique": {
           "name": "challenge_links_token_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "token"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
-      }
+      },
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     },
     "public.reports": {
       "name": "reports",
@@ -192,48 +201,77 @@
       },
       "indexes": {
         "reports_user_period_idx": {
-          "name": "reports_user_period_idx",
           "columns": [
-            "user_id",
-            "period"
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "period",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "with": {},
+          "name": "reports_user_period_idx",
+          "isUnique": false,
+          "method": "btree",
+          "concurrently": false
         },
         "reports_public_idx": {
-          "name": "reports_public_idx",
           "columns": [
-            "is_public",
-            "period"
+            {
+              "expression": "is_public",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "period",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "with": {},
+          "name": "reports_public_idx",
+          "isUnique": false,
+          "method": "btree",
+          "concurrently": false
         }
       },
       "foreignKeys": {
         "reports_user_id_users_id_fk": {
           "name": "reports_user_id_users_id_fk",
           "tableFrom": "reports",
-          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "reports_user_period_unique": {
           "name": "reports_user_period_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "user_id",
             "period"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
-      }
+      },
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     },
     "public.sessions": {
       "name": "sessions",
@@ -260,16 +298,27 @@
       },
       "indexes": {
         "sessions_expire_idx": {
-          "name": "sessions_expire_idx",
           "columns": [
-            "expire"
+            {
+              "expression": "expire",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "with": {},
+          "name": "sessions_expire_idx",
+          "isUnique": false,
+          "method": "btree",
+          "concurrently": false
         }
       },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     },
     "public.users": {
       "name": "users",
@@ -354,18 +403,34 @@
       },
       "indexes": {
         "users_github_id_idx": {
-          "name": "users_github_id_idx",
           "columns": [
-            "github_id"
+            {
+              "expression": "github_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "with": {},
+          "name": "users_github_id_idx",
+          "isUnique": false,
+          "method": "btree",
+          "concurrently": false
         },
         "users_username_idx": {
-          "name": "users_username_idx",
           "columns": [
-            "username"
+            {
+              "expression": "username",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": false
+          "with": {},
+          "name": "users_username_idx",
+          "isUnique": false,
+          "method": "btree",
+          "concurrently": false
         }
       },
       "foreignKeys": {},
@@ -373,19 +438,28 @@
       "uniqueConstraints": {
         "users_github_id_unique": {
           "name": "users_github_id_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "github_id"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
-      }
+      },
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     }
   },
   "enums": {},
   "schemas": {},
   "_meta": {
-    "columns": {},
     "schemas": {},
-    "tables": {}
-  }
+    "tables": {},
+    "columns": {}
+  },
+  "id": "ae725f2b-2c59-453d-b82c-abebdcfa955a",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "sequences": {},
+  "policies": {},
+  "views": {},
+  "roles": {}
 }
