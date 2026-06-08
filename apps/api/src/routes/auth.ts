@@ -6,12 +6,7 @@ import { db } from '../db/client';
 import { users } from '../db/schema';
 import { eq } from 'drizzle-orm';
 
-declare module '@fastify/session' {
-  interface FastifySessionObject {
-    userId?: number;
-    oauthState?: string;
-  }
-}
+import '../types/session';
 
 const authRoutes: FastifyPluginAsync = async (fastify) => {
 

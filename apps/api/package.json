@@ -9,6 +9,9 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "db:migrate": "node -r tsx/cjs src/db/migrate.ts",
     "db:generate": "drizzle-kit generate"
   },
@@ -20,19 +23,22 @@
     "@fastify/rate-limit": "^9.1.0",
     "@fastify/session": "^10.9.0",
     "bullmq": "^5.7.1",
+    "connect-pg-simple": "^9.0.1",
     "drizzle-orm": "^0.30.10",
     "fastify": "^4.27.0",
     "ioredis": "^5.3.2",
     "node-fetch": "^3.3.2",
     "pg": "^8.11.5",
-    "pino-pretty": "^11.0.0",
-    "connect-pg-simple": "^9.0.1"
+    "pino-pretty": "^11.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.12.12",
     "@types/pg": "^8.11.6",
+    "@vitest/coverage-v8": "^2.1.9",
     "drizzle-kit": "^0.21.4",
     "tsx": "^4.10.5",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "vite": "^5.4.21",
+    "vitest": "^2.1.9"
   }
 }

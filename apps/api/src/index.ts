@@ -4,7 +4,9 @@ import helmet from '@fastify/helmet';
 import cookie from '@fastify/cookie';
 import session from '@fastify/session';
 import rateLimit from '@fastify/rate-limit';
-import authRoutes from './routes/auth';
+import authRoutes          from './routes/auth';
+import reportRoutes        from './routes/reports';
+import { startNarrativeWorker } from './workers/narrativeWorker';
 
 const PORT = Number(process.env.PORT ?? 3001);
 const HOST = process.env.HOST ?? '0.0.0.0';
@@ -63,6 +65,7 @@ async function buildApp() {
 
   // ── Routes ────────────────────────────────────────────────────────────────
   await app.register(authRoutes);
+  await app.register(reportRoutes);
 
   // ── Health check ─────────────────────────────────────────────────────────
   app.get('/health', async () => ({ status: 'ok', version: '3.0.0' }));
@@ -75,6 +78,12 @@ async function start() {
   try {
     await app.listen({ port: PORT, host: HOST });
     app.log.info(`GitReport API listening on ${HOST}:${PORT}`);
+
+    // Start async BullMQ workers (Sprint 3 — narrative generation)
+    // In production, run these in a separate worker process.
+    if (process.env.START_WORKERS !== 'false') {
+      startNarrativeWorker();
+    }
   } catch (err) {
     app.log.error(err);
     process.exit(1);
