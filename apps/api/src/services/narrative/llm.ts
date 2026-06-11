@@ -1,42 +1,30 @@
 /**
  * LLM narrative generator (PRD §3.6)
  *
- * Calls Claude API with the structured AI payload and returns the
+ * Calls Gemini API with the structured AI payload and returns the
  * reflective summary paragraph (80–120 words).
  *
  * This module is the ONLY place in the codebase that communicates with
- * the Claude API. All calls are server-side only — user tokens never used here.
+ * the LLM API. All calls are server-side only.
  *
+ * Model: gemini-2.5-flash (free tier — 15 req/min, 1M tokens/day)
  * Rate limit: 5 req/user/min enforced upstream by the job queue (PRD §9.3).
  */
 
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { AiPayload } from '../aggregation/types';
 import {
   NARRATIVE_SYSTEM_PROMPT,
-  buildNarrativeMessages,
+  buildNarrativeUserMessage,
 } from './prompt';
 
-// ── Claude client ─────────────────────────────────────────────────────────────
+// Global client removed — instantiated per-request using user API key
 
-let _client: Anthropic | null = null;
+// ── Model config ──────────────────────────────────────────────────────────────
 
-function getClient(): Anthropic {
-  if (!_client) {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      throw new Error('[narrative] ANTHROPIC_API_KEY is not set');
-    }
-    _client = new Anthropic({ apiKey });
-  }
-  return _client;
-}
-
-// ── Model config (PRD §3.6) ───────────────────────────────────────────────────
-
-const MODEL_ID      = 'claude-haiku-4-5';
-const MAX_TOKENS    = 200;
-const TEMPERATURE   = 0.7;
+const MODEL_ID    = 'gemini-2.5-flash';
+const MAX_TOKENS  = 1000;
+const TEMPERATURE = 0.7;
 
 // ── Narrative generator ───────────────────────────────────────────────────────
 
@@ -50,8 +38,8 @@ export interface NarrativeResult {
  * Generate the AI reflective summary for the given payload.
  *
  * Throws if:
- *   - ANTHROPIC_API_KEY is not set
- *   - The Claude API returns a non-success response
+ *   - GEMINI_API_KEY is not set
+ *   - The Gemini API returns a non-success response
  *   - The response contains no text content
  *
  * The caller (worker) is responsible for catching errors and updating
@@ -59,32 +47,37 @@ export interface NarrativeResult {
  */
 export async function generateNarrative(
   payload: AiPayload,
+  apiKey:  string,
 ): Promise<NarrativeResult> {
-  const client   = getClient();
-  const messages = buildNarrativeMessages(payload);
+  const client = new GoogleGenerativeAI(apiKey);
 
-  const response = await client.messages.create({
-    model:      MODEL_ID,
-    max_tokens: MAX_TOKENS,
-    temperature: TEMPERATURE,
-    system:     NARRATIVE_SYSTEM_PROMPT,
-    messages,
+  const model = client.getGenerativeModel({
+    model: MODEL_ID,
+    systemInstruction: NARRATIVE_SYSTEM_PROMPT,
+    generationConfig: {
+      maxOutputTokens: MAX_TOKENS,
+      temperature:     TEMPERATURE,
+    },
   });
 
-  // Extract the text block from the response
-  const textBlock = response.content.find(b => b.type === 'text');
-  if (!textBlock || textBlock.type !== 'text') {
-    throw new Error('[narrative] Claude response contained no text block');
+  const userMessage = buildNarrativeUserMessage(payload);
+
+  const result = await model.generateContent(userMessage);
+  const response = result.response;
+
+  const narrative = response.text().trim();
+
+  if (!narrative) {
+    throw new Error('[narrative] Gemini returned an empty narrative');
   }
 
-  const narrative = textBlock.text.trim();
-  if (!narrative) {
-    throw new Error('[narrative] Claude returned an empty narrative');
-  }
+  // Gemini returns token counts in usageMetadata
+  const inputTokens  = response.usageMetadata?.promptTokenCount     ?? 0;
+  const outputTokens = response.usageMetadata?.candidatesTokenCount ?? 0;
 
   return {
     narrative,
-    inputTokens:  response.usage.input_tokens,
-    outputTokens: response.usage.output_tokens,
+    inputTokens,
+    outputTokens,
   };
 }

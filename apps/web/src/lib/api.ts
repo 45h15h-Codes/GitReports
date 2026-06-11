@@ -1,118 +1,157 @@
-/**
- * API client — single source of truth for all backend communication.
- *
- * All methods return typed responses or throw ApiError.
- * Credentials (session cookie) are always included.
- */
+const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
 
-import type {
-  AuthUser,
-  GenerateReportResponse,
-  MonthlyReport,
-  NarrativeStatusResponse,
-  PublicReportResponse,
-  ReportsListResponse,
-} from '../types/api'
+export interface AchievementResponse {
+  achievementId: string
+  title:         string
+  description:   string
+  meta:          Record<string, unknown> | null
+  unlockedAt:    string
+  period:        string
+}
 
-// ── Config ────────────────────────────────────────────────────────────────────
+export interface PublicProfileReport {
+  period:       string
+  persona:      string | null
+  focusScore:   string | null
+  totalCommits: number
+  narrative:    string | null
+  generatedAt:  string
+}
 
-const API_BASE = (import.meta.env['VITE_API_URL'] as string | undefined) ?? 'http://localhost:3001'
+export interface PublicProfileAchievement {
+  achievementId: string
+  title:         string
+  description:   string
+  unlockedAt:    string
+  period:        string
+}
 
-// ── Error class ───────────────────────────────────────────────────────────────
+export interface PublicProfile {
+  user: {
+    username:    string
+    displayName: string | null
+    avatarUrl:   string | null
+  }
+  reports:      PublicProfileReport[]
+  achievements: PublicProfileAchievement[]
+}
 
 export class ApiError extends Error {
-  constructor(
-    public readonly status: number,
-    message: string,
-  ) {
+  status: number
+  constructor(message: string, status: number) {
     super(message)
-    this.name = 'ApiError'
+    this.status = status
   }
 }
 
-// ── Base fetch ────────────────────────────────────────────────────────────────
-
-async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const headers: Record<string, string> = { ...(init?.headers as Record<string, string> ?? {}) }
-  if (init?.body) {
-    headers['Content-Type'] = headers['Content-Type'] ?? 'application/json'
-  }
-
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...init,
+async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const res = await fetch(`${BASE_URL}${path}`, {
     credentials: 'include',
-    headers,
+    headers: { 'Content-Type': 'application/json' },
+    ...options,
   })
 
   if (!res.ok) {
-    let message = `HTTP ${res.status}`
-    try {
-      const body = (await res.json()) as { error?: string }
-      if (body.error) message = body.error
-    } catch {
-      // ignore parse failure
-    }
-    throw new ApiError(res.status, message)
+    const body = await res.json().catch(() => ({}))
+    throw new ApiError((body as { message?: string }).message ?? 'Request failed', res.status)
   }
-
-  // 204 No Content
-  if (res.status === 204) return undefined as T
 
   return res.json() as Promise<T>
 }
 
-// ── Auth ──────────────────────────────────────────────────────────────────────
+// ── api object — used by useCinematicMode and direct callers ──────────────────
 
-/** GET /auth/me — returns authenticated user or throws 401 */
-export async function getMe(): Promise<{ user: AuthUser }> {
-  return apiFetch('/auth/me')
-}
-
-/** POST /auth/logout — destroys session */
-export async function logout(): Promise<void> {
-  return apiFetch('/auth/logout', { method: 'POST' })
-}
-
-/** Redirect to GitHub OAuth (full page navigation) */
-export function redirectToGitHub(): void {
-  window.location.href = `${API_BASE}/auth/github`
-}
-
-// ── Reports ───────────────────────────────────────────────────────────────────
-
-/** GET /reports — list of report metadata for authenticated user */
-export async function getReports(): Promise<ReportsListResponse> {
-  return apiFetch('/reports')
-}
-
-/** GET /reports/:period — full report for authenticated user */
-export async function getReport(period: string): Promise<{ report: MonthlyReport }> {
-  return apiFetch(`/reports/${period}`)
-}
-
-/** GET /reports/:period/status — lightweight narrative status poll */
-export async function getReportStatus(period: string): Promise<NarrativeStatusResponse> {
-  return apiFetch(`/reports/${period}/status`)
-}
-
-/**
- * POST /reports/generate — trigger ingestion + narrative pipeline.
- * Returns immediately with narrativeStatus: 'pending'.
- * Poll getReportStatus() until complete | failed.
- */
-export async function generateReport(period?: string): Promise<GenerateReportResponse> {
-  return apiFetch('/reports/generate', {
+export const api = {
+  getReport:         (period: string) => request(`/reports/${period}`),
+  generateReport:    (period?: string) => request('/reports/generate', {
     method: 'POST',
-    body:   period ? JSON.stringify({ period }) : undefined,
+    body:   JSON.stringify({ period }),
+  }),
+  getReports:        () => request('/reports'),
+  getMe:             () => request('/auth/me'),
+  logout:            () => request<{ ok: boolean }>('/auth/logout', {
+    method: 'POST',
+    body:   '{}',
+  }),
+  markCinematicSeen: () => request<{ ok: boolean }>('/auth/cinematic-seen', {
+    method: 'POST',
+    body:   '{}',
+  }),
+  exportReportPdf: (username: string, period: string) => {
+    // Opens download directly — no fetch needed, browser handles Content-Disposition
+    const url = `${BASE_URL}/reports/export/${username}/${period}`
+    window.open(url, '_blank')
+  },
+  getAchievements:    () => request<{ achievements: AchievementResponse[] }>('/achievements'),
+  getPublicProfile:   (username: string) => request<PublicProfile>(`/public/u/${username}`),
+}
+
+// ── Named exports — consumed by AuthContext, hooks, and components ─────────────
+
+export async function getMe<T = unknown>(): Promise<T> {
+  return request<T>('/auth/me')
+}
+
+export async function logout(): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>('/auth/logout', {
+    method: 'POST',
+    body:   '{}',
   })
 }
 
-// ── Public surfaces ───────────────────────────────────────────────────────────
+export async function saveGeminiKey(apiKey: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>('/auth/gemini-key', {
+    method: 'POST',
+    body: JSON.stringify({ apiKey }),
+  })
+}
 
-/** GET /public/u/:username/:period — public report (private repos stripped server-side) */
-export async function getPublicReport(
-  username: string,
-  period:   string,
-): Promise<PublicReportResponse> {
-  return apiFetch(`/public/u/${username}/${period}`)
+export function redirectToGitHub(): void {
+  window.location.href = `${BASE_URL}/auth/github`
+}
+
+export async function getPublicReport<T = unknown>(username: string, period: string): Promise<T> {
+  return request<T>(`/public/u/${username}/${period}`)
+}
+
+export async function getReports<T = unknown>(): Promise<T> {
+  return request<T>('/reports')
+}
+
+export async function getReport<T = unknown>(period: string): Promise<T> {
+  return request<T>(`/reports/${period}`)
+}
+
+export async function generateReport<T = unknown>(period?: string): Promise<T> {
+  return request<T>('/reports/generate', {
+    method: 'POST',
+    body:   JSON.stringify({ period }),
+  })
+}
+
+/**
+ * streamReportStatus — opens SSE for real-time narrative generation status.
+ * Returns a cleanup fn that closes the EventSource.
+ */
+export function streamReportStatus(
+  period:  string,
+  onData:  (data: { narrativeStatus: string; narrative?: string }) => void,
+  onError: (err: Event) => void,
+): () => void {
+  const es = new EventSource(`${BASE_URL}/reports/${period}/stream`, { withCredentials: true })
+
+  es.onmessage = (event) => {
+    try {
+      onData(JSON.parse(event.data) as { narrativeStatus: string; narrative?: string })
+    } catch {
+      // ignore malformed frames
+    }
+  }
+
+  es.onerror = (err) => {
+    onError(err)
+    es.close()
+  }
+
+  return () => es.close()
 }

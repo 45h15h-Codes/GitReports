@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react'
-import { gsap } from 'gsap'
+import { useEffect, useRef, memo } from 'react'
+import type { Context } from 'gsap';
 import { Lock, Sparkle } from '@phosphor-icons/react'
 import type { DeveloperPersona } from '../types/api'
 import { PERSONA_META } from '../utils/persona'
@@ -14,7 +14,7 @@ interface InsightsPanelProps {
 
 const RADIUS = 30
 
-export function InsightsPanel({
+export const InsightsPanel = memo(function InsightsPanel({
   persona,
   focusScore,
   prevFocusScore,
@@ -37,20 +37,24 @@ export function InsightsPanel({
     // Compute inside effect — satisfies exhaustive-deps
     const circumference = 2 * Math.PI * RADIUS
 
-    const ctx = gsap.context(() => {
-      gsap.fromTo(
-        gaugeRef.current,
-        { strokeDashoffset: circumference },
-        {
-          strokeDashoffset: circumference * (1 - focusScore),
-          duration: 1,
-          ease:     'expo.out',
-          delay:    0.2,
-        }
-      )
-    }, rootRef)
+    let ctx: Context;
+    import('gsap').then(({ gsap }) => {
+      if (!gaugeRef.current || !rootRef.current) return;
+      ctx = gsap.context(() => {
+        gsap.fromTo(
+          gaugeRef.current,
+          { strokeDashoffset: circumference },
+          {
+            strokeDashoffset: circumference * (1 - focusScore),
+            duration: 1,
+            ease:     'expo.out',
+            delay:    0.2,
+          }
+        )
+      }, rootRef)
+    });
 
-    return () => ctx.revert()
+    return () => ctx?.revert()
   }, [focusScore])
 
   const focusDelta = prevFocusScore !== undefined
@@ -169,4 +173,4 @@ export function InsightsPanel({
       </div>
     </div>
   )
-}
+})

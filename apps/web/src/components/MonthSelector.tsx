@@ -45,7 +45,7 @@ export function MonthSelector({ months, selected, onSelect }: MonthSelectorProps
             )}
             <span className="relative z-10">
               {label}
-              {year !== currentYear && (
+              {year !== currentYear && period.length !== 4 && (
                 <span style={{ color: '#484F58', marginLeft: 2 }}>
                   '{year.slice(2)}
                 </span>

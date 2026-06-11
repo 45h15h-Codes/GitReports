@@ -24,15 +24,17 @@ gitreport/
 | Layer | Technology |
 |---|---|
 | Frontend | React 19 + TypeScript + Vite |
+| State Management | TanStack Query v5 |
+| Styling | Tailwind CSS v3 |
 | UI Animation | Framer Motion |
 | Canvas/Sequence Animation | GSAP + ScrollTrigger |
 | Backend | Node.js + Fastify |
 | AI | Anthropic Claude API (Haiku) |
 | Database | PostgreSQL + Drizzle ORM |
-| Cache | Redis (BullMQ + session) |
-| Auth | GitHub OAuth 2.0 |
+| Queue/Redis | BullMQ + ioredis |
+| Auth | GitHub OAuth 2.0 + @fastify/session |
 | Icons | Phosphor Icons (thin) |
-| Type | Fraunces + DM Mono |
+| Type | Fraunces + DM Mono (Fontsource) |
 
 ## Getting Started
 
@@ -68,16 +70,20 @@ pnpm dev
 
 The API runs on `http://localhost:3001`, the web app on `http://localhost:5173`.
 
-## Development Roadmap
+## Current Status (Development)
 
 | Phase | Milestone | Status |
 |---|---|---|
+| **Security Audits** | Comprehensive audit reports + Sprint A1 fixes applied | ✅ Complete |
 | **Sprint 1** | Monorepo + DB schema + GitHub OAuth | ✅ Complete |
-| **Sprint 2** | GitHub API client + Aggregation math | 🔄 Next |
-| **Sprint 3** | category_signal + focus_score + persona derivation | ⏳ Pending |
-| **Sprint 4** | LLM call + payload storage + report assembly | ⏳ Pending |
-| **Sprint 5** | Dashboard UI (fast mode) + stat cards + commit chart | ⏳ Pending |
-| **Sprint 6** | Dev Card + Cinematic mode + Challenge Link + Public report | ⏳ Pending |
+| **Sprint 2** | GitHub API client + Aggregation math | ✅ Complete |
+| **Sprint 3** | category_signal + focus_score + persona derivation | ✅ Complete |
+| **Sprint 4** | LLM call + payload storage + report assembly | ✅ Complete |
+| **Sprint 5** | Dashboard UI + React Query + Tailwind CSS | ✅ Complete |
+| **Sprint 6** | Dev Card + Challenge Link + Public report | ✅ Complete |
+| **Sprint 7** | Fastify v5 + Async pipeline + SSE streaming | ⏳ Pending |
+| **Sprint 8** | Security hardening + CSP + CSRF + Rate limits | ⏳ Pending |
+| **Sprint 9** | Production readiness + CI/CD + Docker | ⏳ Pending |
 
 ## Security
 
@@ -87,6 +93,35 @@ The API runs on `http://localhost:3001`, the web app on `http://localhost:5173`.
 - Session cookies are **httpOnly** — JavaScript cannot access them
 - `prefers-reduced-motion` respected across all animations
 
+## Production Roadmap
+
+- **Complete Security Suite**: All Sprint A-G fixes implemented (session hardening, CSRF protection, Redis-backed rate limiting, dead-letter queues)
+- **Full Async Pipeline**: BullMQ workers handling all report generation without blocking HTTP handlers
+- **Live Progress Updates**: Server-Sent Events (SSE) streaming for real-time report generation status
+- **Scalable Infrastructure**: Redis singleton pattern, connection pooling, graceful worker shutdown
+- **CI/CD Pipeline**: Automated testing, linting, and deployment via GitHub Actions
+- **GDPR Compliance**: Automated data deletion within 30 days, challenge link expiry
+- **Monitoring**: Deep health checks, error tracking, database backups
+
+## Free to Use
+
+GitReport is completely free for individual developers.
+
+**What you get for free:**
+- Unlimited monthly report generations for **public repositories**
+- Full dashboard with statistics, streaks, and language breakdown
+- Cinematic Dev Card mode with shareable links
+- Challenge links to compare with friends
+- All core features with no restrictions
+
+**Setup:**
+1. Create a GitHub OAuth app (free)
+2. Use any PostgreSQL provider (Neon free tier works)
+3. Use any Redis provider (Upstash free tier works)
+4. Sign in — your reports generate automatically
+
+No credit card required. No usage limits. Just connect your GitHub and see your monthly developer story.
+
 ---
 
-*GitReport v3.0 — Built with the PRD at docs/GitReport_PRD_v3.md*
+*GitReport v3.0 — Built with the PRD at docs/GitReport_PRD_v3.md. Security audit reports in `docs/` and `*.md` root files.*

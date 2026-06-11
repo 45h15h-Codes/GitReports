@@ -1,58 +1,62 @@
 /**
  * Report routes (PRD §7.2, §10.2)
  *
- * POST /reports/generate
- *   Triggers full aggregation pipeline for the authenticated user + period.
- *   Enqueues async narrative generation via BullMQ.
- *   Rate limited: 10 req/user/min (PRD §9.3).
+ * POST /reports/generate — Sprint D.3 fully async pipeline:
+ *   Validates → checks idempotency → enqueues to BullMQ → returns 202.
+ *   No ingestion or aggregation in the HTTP handler.
+ *   The reportWorker handles the full pipeline asynchronously.
+ *   SSE endpoint /reports/:period/stream provides real-time status updates.
  *
  * GET /reports
  *   Returns metadata list for all reports owned by the authenticated user.
- *   No payload or narrative in the list — lightweight for dashboard sidebar.
  *
  * GET /reports/:period
  *   Returns the full report (payload + narrative) for the owner.
- *   Period format: 'YYYY-MM' (e.g. '2025-04').
  *
- * GET /reports/:period/status
- *   Lightweight poll endpoint for narrative generation status.
- *   Returns { narrativeStatus, narrative? } — used by the dashboard to poll
- *   while the LLM worker is running in the background.
+ * GET /reports/:period/stream
+ *   SSE for real-time narrative generation status.
  *
  * DELETE /reports/:period
- *   Deletes the report for the given period. Allows the user to regenerate.
- *   Stored payload (longitudinal data) is also deleted — GDPR compliance.
+ *   Deletes the report. GDPR §9.1.
  *
  * PUT /reports/:period/visibility
- *   Toggle isPublic on a report. Body: { isPublic: boolean }.
- *   Governs whether the report appears on public surfaces (PRD §4.4).
+ *   Toggle isPublic.
  *
  * GET /public/u/:username/:period
- *   Public report surface — no auth required.
- *   Private repo data is absent from payload (server-rendered, not CSS-hidden).
- *   PRD §9.2: zero private data in DOM on public surfaces.
+ *   Public report surface — no auth required. Private repos stripped server-side.
  */
 
 import type { FastifyPluginAsync } from "fastify";
-import { eq, and, desc } from "drizzle-orm";
-import { db } from "../db/client";
-import { users, reports } from "../db/schema";
 import { requireAuth } from "../lib/auth";
-import { decryptToken } from "../lib/crypto";
-import { ingestMonthlyData } from "../services/aggregation/ingestion";
-import { aggregateMonthlyData } from "../services/aggregation/engine";
-import type { PrevPeriodSummary } from "../services/aggregation/types";
-import { getNarrativeQueue } from "../workers/narrativeWorker";
 import {
   assembleOwnerReport,
   assemblePublicReport,
   assembleReportListItem,
 } from "../services/report/assembler";
 import type { Report } from "../db/schema";
+import { getReportQueue } from "../workers/reportWorker";
+import { db } from "../db/client";
+import { challengeLinks, reports, users, achievements } from "../db/schema";
+import { eq, and } from "drizzle-orm";
+import { randomBytes } from "crypto";
+import { generateReportPdf } from "../services/pdf/reportPdf";
+import type { AiPayload } from "../services/aggregation/types";
+import { ACHIEVEMENT_DEFINITIONS } from "../services/achievements/definitions";
+
+// ── Service layer imports (D.4) ───────────────────────────────────────────────
+import {
+  findReport,
+  findReportStatus,
+  listReports,
+  deleteReport,
+  setReportVisibility,
+  findPublicReport,
+} from "../services/ReportService";
+import { getPublicUserByUsername, getPublicProfile } from "../services/UserService";
 
 // ── Period validation ─────────────────────────────────────────────────────────
 
-const PERIOD_REGEX = /^\d{4}-(0[1-9]|1[0-2])$/;
+const PERIOD_REGEX = /^(\d{4}|\d{4}-(0[1-9]|1[0-2]))$/;
 
 function isValidPeriod(period: string): boolean {
   return PERIOD_REGEX.test(period);
@@ -68,7 +72,9 @@ function previousMonth(): string {
 // ── Routes ────────────────────────────────────────────────────────────────────
 
 const reportRoutes: FastifyPluginAsync = async (fastify) => {
-  // ── POST /reports/generate ─────────────────────────────────────────────────
+  // ── POST /reports/generate — Sprint D.3 fully async ───────────────────────
+  // Validate → idempotency check → enqueue → return 202.
+  // All heavy lifting done in reportWorker (ingestion, aggregation, upsert).
 
   fastify.post<{
     Body: { period?: string; include_private?: boolean };
@@ -81,7 +87,7 @@ const reportRoutes: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (req, reply) => {
-      const userId = req.session.get("userId")!;
+      const userId = req.session.userId!;
       const period = req.body?.period ?? previousMonth();
 
       if (!isValidPeriod(period)) {
@@ -102,112 +108,49 @@ const reportRoutes: FastifyPluginAsync = async (fastify) => {
         });
       }
 
-      // Return existing complete report (idempotent GET-like behaviour)
-      const [existing] = await db
-        .select()
-        .from(reports)
-        .where(and(eq(reports.userId, userId), eq(reports.period, period)))
-        .limit(1);
-
+      // Idempotency: return cached complete report immediately (no re-enqueue)
+      const existing = await findReport(userId, period);
       if (existing && existing.narrativeStatus === "complete") {
-        return reply.send({
-          report: assembleOwnerReport(existing as unknown as Report),
-          cached: true,
+        return reply.status(200).send({
+          report:  assembleOwnerReport(existing as unknown as Report),
+          cached:  true,
+          queued:  false,
         });
       }
 
-      // Fetch user + decrypt GitHub token
-      const [user] = await db
-        .select({
-          id: users.id,
-          username: users.username,
-          accessToken: users.accessToken,
-          tokenScope: users.tokenScope,
-        })
-        .from(users)
-        .where(eq(users.id, userId))
-        .limit(1);
-
-      if (!user) return reply.status(401).send({ error: "User not found" });
-
-      const plainToken = decryptToken(user.accessToken);
-      const includePrivate =
-        req.body?.include_private === true && user.tokenScope.includes("repo");
-
-      // Fetch previous period payload for longitudinal narrative context (PRD §6.1)
-      const prevPeriod = getPrevPeriod(period);
-      const prevPeriodSummary = await fetchPrevPeriodSummary(
-        userId,
-        prevPeriod,
-      );
-
-      // Run GitHub data ingestion
-      const ingestion = await ingestMonthlyData(
-        plainToken,
-        user.username,
-        period,
-        { includePrivate },
-      );
-
-      if (ingestion.rateLimitHit && ingestion.repos.length === 0) {
-        return reply.status(503).send({
-          error:
-            "GitHub API rate limit reached. Please retry after the reset time.",
-          rateLimitReset: ingestion.rateLimitReset,
+      // If already in-flight, just acknowledge (don't double-enqueue)
+      if (
+        existing &&
+        (existing.narrativeStatus === "pending" ||
+          existing.narrativeStatus === "generating")
+      ) {
+        return reply.status(202).send({
+          status: "in_progress",
+          period,
+          queued: false,
         });
       }
 
-      // Assemble the structured AI payload via the aggregation engine
-      const payload = aggregateMonthlyData({
-        username: user.username,
-        period,
-        repos: ingestion.repos,
-        prevPeriodSummary,
-      });
-
-      // Upsert report row
-      // Delete existing (pending/failed) before insert — Drizzle 0.30 composite unique workaround
-      await db
-        .delete(reports)
-        .where(and(eq(reports.userId, userId), eq(reports.period, period)));
-
-      const [report] = await db
-        .insert(reports)
-        .values({
+      // Enqueue to report-generation queue (idempotent job ID per user+period)
+      const queue = getReportQueue();
+      await queue.add(
+        "generate-report",
+        {
           userId,
           period,
-          payloadVersion: payload.payload_version,
-          payload: payload as unknown as Record<string, unknown>,
-          narrativeStatus: "pending",
-          persona: payload.developer_persona,
-          focusScore: String(payload.focus_score),
-          isPublic: true,
-        })
-        .returning();
+          includePrivate: req.body?.include_private === true,
+        },
+        {
+          jobId:    `report:${userId}:${period}`,
+          attempts: 3,
+          backoff:  { type: "exponential", delay: 5000 },
+        },
+      );
 
-      // Enqueue async LLM narrative generation
-      // The worker picks this up, calls Claude Haiku, and updates the row.
-      // Non-fatal: report is still useful without narrative — UI shows placeholder.
-      try {
-        const queue = getNarrativeQueue();
-        await queue.add(
-          "generate-narrative",
-          { reportId: report!.id, payload },
-          { jobId: `narrative:${report!.id}` }, // idempotent — dedup by reportId
-        );
-      } catch (queueErr) {
-        req.log.error(
-          { err: queueErr },
-          "[reports] Failed to enqueue narrative job",
-        );
-      }
-
-      return reply.status(201).send({
-        report: assembleOwnerReport(report! as unknown as Report),
-        cached: false,
-        rateLimitHit: ingestion.rateLimitHit,
-        reposProcessed: ingestion.repos.length,
-        reposSkipped: ingestion.reposSkipped,
+      return reply.status(202).send({
+        status: "queued",
+        period,
+        queued: true,
       });
     },
   );
@@ -215,14 +158,8 @@ const reportRoutes: FastifyPluginAsync = async (fastify) => {
   // ── GET /reports ───────────────────────────────────────────────────────────
 
   fastify.get("/reports", { preHandler: requireAuth }, async (req, reply) => {
-    const userId = req.session.get("userId")!;
-
-    const rows = await db
-      .select()
-      .from(reports)
-      .where(eq(reports.userId, userId))
-      .orderBy(desc(reports.period));
-
+    const userId = req.session.userId!;
+    const rows = await listReports(userId);
     return reply.send({
       reports: rows.map((r) => assembleReportListItem(r as unknown as Report)),
     });
@@ -233,7 +170,7 @@ const reportRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
     Params: { period: string };
   }>("/reports/:period", { preHandler: requireAuth }, async (req, reply) => {
-    const userId = req.session.get("userId")!;
+    const userId = req.session.userId!;
     const { period } = req.params;
 
     if (!isValidPeriod(period)) {
@@ -242,11 +179,7 @@ const reportRoutes: FastifyPluginAsync = async (fastify) => {
         .send({ error: "Invalid period format. Use YYYY-MM." });
     }
 
-    const [row] = await db
-      .select()
-      .from(reports)
-      .where(and(eq(reports.userId, userId), eq(reports.period, period)))
-      .limit(1);
+    const row = await findReport(userId, period);
 
     if (!row) {
       return reply
@@ -259,17 +192,16 @@ const reportRoutes: FastifyPluginAsync = async (fastify) => {
     });
   });
 
-  // ── GET /reports/:period/status ────────────────────────────────────────────
-  // Lightweight poll endpoint for narrative generation status.
-  // The dashboard polls this until narrativeStatus === 'complete' or 'failed'.
+  // ── GET /reports/:period/stream ────────────────────────────────────────────
+  // Server-Sent Events (SSE) for real-time report + narrative status.
 
   fastify.get<{
     Params: { period: string };
   }>(
-    "/reports/:period/status",
+    "/reports/:period/stream",
     { preHandler: requireAuth },
     async (req, reply) => {
-      const userId = req.session.get("userId")!;
+      const userId = req.session.userId!;
       const { period } = req.params;
 
       if (!isValidPeriod(period)) {
@@ -278,39 +210,62 @@ const reportRoutes: FastifyPluginAsync = async (fastify) => {
           .send({ error: "Invalid period format. Use YYYY-MM." });
       }
 
-      const [row] = await db
-        .select({
-          narrativeStatus: reports.narrativeStatus,
-          narrative: reports.narrative,
-        })
-        .from(reports)
-        .where(and(eq(reports.userId, userId), eq(reports.period, period)))
-        .limit(1);
+      const origin = req.headers.origin ?? process.env.FRONTEND_URL ?? "http://localhost:5173";
 
-      if (!row) {
-        return reply
-          .status(404)
-          .send({ error: "Report not found for this period." });
-      }
+      reply.hijack();
+      reply.raw.setHeader("Content-Type", "text/event-stream");
+      reply.raw.setHeader("Cache-Control", "no-cache");
+      reply.raw.setHeader("Connection", "keep-alive");
+      reply.raw.setHeader("Access-Control-Allow-Origin", origin);
+      reply.raw.setHeader("Access-Control-Allow-Credentials", "true");
+      reply.raw.flushHeaders();
 
-      return reply.send({
-        narrativeStatus: row.narrativeStatus,
-        // Include narrative text only once complete — avoids streaming partial text
-        ...(row.narrativeStatus === "complete"
-          ? { narrative: row.narrative }
-          : {}),
+      const interval = setInterval(async () => {
+        try {
+          const row = await findReportStatus(userId, period);
+
+          if (!row) {
+            // Report not yet created (worker hasn't run) — keep polling
+            reply.raw.write(
+              `data: ${JSON.stringify({ narrativeStatus: "queued" })}\n\n`,
+            );
+            return;
+          }
+
+          const payload = {
+            narrativeStatus: row.narrativeStatus,
+            ...(row.narrativeStatus === "complete"
+              ? { narrative: row.narrative }
+              : {}),
+          };
+
+          reply.raw.write(`data: ${JSON.stringify(payload)}\n\n`);
+
+          if (
+            row.narrativeStatus === "complete" ||
+            row.narrativeStatus === "failed"
+          ) {
+            clearInterval(interval);
+            reply.raw.end();
+          }
+        } catch {
+          clearInterval(interval);
+          reply.raw.end();
+        }
+      }, 2000);
+
+      req.raw.on("close", () => {
+        clearInterval(interval);
       });
     },
   );
 
   // ── DELETE /reports/:period ────────────────────────────────────────────────
-  // Allows the user to delete a report (e.g. to regenerate it).
-  // The stored payload (longitudinal data asset) is also deleted — GDPR §9.1.
 
   fastify.delete<{
     Params: { period: string };
   }>("/reports/:period", { preHandler: requireAuth }, async (req, reply) => {
-    const userId = req.session.get("userId")!;
+    const userId = req.session.userId!;
     const { period } = req.params;
 
     if (!isValidPeriod(period)) {
@@ -319,12 +274,9 @@ const reportRoutes: FastifyPluginAsync = async (fastify) => {
         .send({ error: "Invalid period format. Use YYYY-MM." });
     }
 
-    const deleted = await db
-      .delete(reports)
-      .where(and(eq(reports.userId, userId), eq(reports.period, period)))
-      .returning({ id: reports.id });
+    const deleted = await deleteReport(userId, period);
 
-    if (deleted.length === 0) {
+    if (!deleted) {
       return reply
         .status(404)
         .send({ error: "Report not found for this period." });
@@ -334,8 +286,6 @@ const reportRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // ── PUT /reports/:period/visibility ────────────────────────────────────────
-  // Toggle whether the report appears on public surfaces.
-  // PRD §4.4: private reports are absent from challenge, public profile, shared page.
 
   fastify.put<{
     Params: { period: string };
@@ -344,7 +294,7 @@ const reportRoutes: FastifyPluginAsync = async (fastify) => {
     "/reports/:period/visibility",
     { preHandler: requireAuth },
     async (req, reply) => {
-      const userId = req.session.get("userId")!;
+      const userId = req.session.userId!;
       const { period } = req.params;
       const { isPublic } = req.body ?? {};
 
@@ -360,11 +310,7 @@ const reportRoutes: FastifyPluginAsync = async (fastify) => {
           .send({ error: "Body must include isPublic (boolean)." });
       }
 
-      const [updated] = await db
-        .update(reports)
-        .set({ isPublic, updatedAt: new Date() })
-        .where(and(eq(reports.userId, userId), eq(reports.period, period)))
-        .returning({ id: reports.id, isPublic: reports.isPublic });
+      const updated = await setReportVisibility(userId, period, isPublic);
 
       if (!updated) {
         return reply
@@ -377,9 +323,6 @@ const reportRoutes: FastifyPluginAsync = async (fastify) => {
   );
 
   // ── GET /public/u/:username/:period ────────────────────────────────────────
-  // Public surface — no auth required.
-  // Private repos are absent from payload (server-rendered, not CSS-hidden).
-  // PRD §9.2: "zero private data in DOM on all non-owner surfaces"
 
   fastify.get<{
     Params: { username: string; period: string };
@@ -390,33 +333,10 @@ const reportRoutes: FastifyPluginAsync = async (fastify) => {
       return reply.status(400).send({ error: "Invalid period format." });
     }
 
-    // Resolve user
-    const [user] = await db
-      .select({
-        id: users.id,
-        username: users.username,
-        avatarUrl: users.avatarUrl,
-        displayName: users.displayName,
-      })
-      .from(users)
-      .where(eq(users.username, username))
-      .limit(1);
-
+    const user = await getPublicUserByUsername(username);
     if (!user) return reply.status(404).send({ error: "User not found." });
 
-    // Find public report
-    const [row] = await db
-      .select()
-      .from(reports)
-      .where(
-        and(
-          eq(reports.userId, user.id),
-          eq(reports.period, period),
-          eq(reports.isPublic, true),
-        ),
-      )
-      .limit(1);
-
+    const row = await findPublicReport(user.id, period);
     if (!row) {
       return reply
         .status(404)
@@ -425,67 +345,246 @@ const reportRoutes: FastifyPluginAsync = async (fastify) => {
 
     return reply.send({
       user: {
-        username: user.username,
+        username:    user.username,
         displayName: user.displayName,
-        avatarUrl: user.avatarUrl,
+        avatarUrl:   user.avatarUrl,
       },
       report: assemblePublicReport(row as unknown as Report),
     });
   });
+  // ── POST /challenges — create challenge link (PRD §7.8 P1) ────────────────
+  // Authenticated user creates a challenge pointing at a target username.
+  // Inserts into challenge_links, then fires a challenge-received email
+  // to the challenged user (fire-and-forget — never fails the request).
+
+  fastify.post<{
+    Body: { period: string; challengedUsername?: string; challengerStats?: Record<string, unknown> };
+  }>(
+    "/challenges",
+    {
+      preHandler: requireAuth,
+      config: {
+        rateLimit: { max: 20, timeWindow: "1 minute" },
+      },
+    },
+    async (req, reply) => {
+      const challengerUserId = req.session.userId!;
+      const { period, challengedUsername, challengerStats = {} } = req.body ?? {};
+
+      if (!period || !isValidPeriod(period)) {
+        return reply
+          .status(400)
+          .send({ error: "Invalid or missing period. Use YYYY-MM." });
+      }
+
+      // Generate a URL-safe token
+      const token = randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+
+      await db.insert(challengeLinks).values({
+        token,
+        challengerUserId,
+        period,
+        challengerStats,
+        expiresAt,
+      });
+
+      // Resolve challenger username from DB (session only stores userId)
+      const challengerRow = await db
+        .select({ username: users.username })
+        .from(users)
+        .where(eq(users.id, challengerUserId))
+        .limit(1)
+        .then(r => r[0]);
+      
+      const challengerUsername = challengerRow?.username ?? "Someone";
+
+      const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:5173";
+      // In App.tsx the route is /challenge/:username/:period
+      const challengeUrl = `${frontendUrl}/challenge/${challengerUsername}/${period}`;
+
+      // Fire challenge-received email — P1, fire-and-forget
+      try {
+        const { sendChallengeReceivedEmail } = await import("../lib/email");
+
+        if (challengedUsername) {
+          const challengedUser = await db
+            .select({ email: users.email, displayName: users.displayName })
+            .from(users)
+            .where(eq(users.username, challengedUsername))
+            .limit(1)
+            .then(r => r[0]);
+
+          if (challengedUser?.email) {
+            // challengerUsername already resolved above
+
+            await sendChallengeReceivedEmail({
+              to:                 challengedUser.email,
+              displayName:        challengedUser.displayName ?? challengedUsername,
+              challengerUsername,
+              period,
+              challengeUrl,
+            });
+          }
+        }
+      } catch (emailErr) {
+        console.error("[challenge] Failed to send challenge email:", emailErr);
+      }
+
+      return reply.status(201).send({ token, challengeUrl });
+    },
+  );
+
+  // ── PDF export — PRD §7.5 ─────────────────────────────────────────────────
+  // Public-data-only. Private repos filtered server-side before PDF generation.
+  // No auth required — public reports are exportable by anyone.
+  fastify.get<{ Params: { username: string; period: string } }>(
+    '/reports/export/:username/:period',
+    {
+      config: { rateLimit: { max: 10, timeWindow: 60_000 } },
+      schema: {
+        params: {
+          type: 'object',
+          properties: {
+            username: { type: 'string' },
+            period:   { type: 'string', pattern: '^\\d{4}-\\d{2}$' },
+          },
+          required: ['username', 'period'],
+        },
+      },
+    },
+    async (req, reply) => {
+      const { username, period } = req.params
+
+      // Look up user
+      const userRow = await db
+        .select({
+          id:          users.id,
+          username:    users.username,
+          displayName: users.displayName,
+          avatarUrl:   users.avatarUrl,
+        })
+        .from(users)
+        .where(eq(users.username, username))
+        .limit(1)
+        .then(r => r[0])
+
+      if (!userRow) {
+        return reply.status(404).send({ error: 'User not found' })
+      }
+
+      const isOwner = req.session?.userId === userRow.id;
+
+      // Look up report — must be public, OR requester must be the owner
+      const reportRow = await db
+        .select({
+          payload:         reports.payload,
+          narrative:       reports.narrative,
+          isPublic:        reports.isPublic,
+          narrativeStatus: reports.narrativeStatus,
+        })
+        .from(reports)
+        .where(
+          and(
+            eq(reports.userId,   userRow.id),
+            eq(reports.period,   period),
+          ),
+        )
+        .limit(1)
+        .then(r => r[0])
+
+      if (!reportRow || (!reportRow.isPublic && !isOwner)) {
+        return reply.status(404).send({ error: 'Report not found or not public' })
+      }
+
+      if (reportRow.narrativeStatus !== 'complete') {
+        return reply.status(409).send({ error: 'Report is not yet complete' })
+      }
+
+      const payload = reportRow.payload as AiPayload
+
+      // PRD §4.4 — filter private repos before ANY data enters PDF, unless owner
+      const finalPayload: AiPayload = isOwner
+        ? payload
+        : {
+            ...payload,
+            repos: payload.repos.filter(r => r.is_public),
+          }
+
+      // Auto-filename — PRD §7.5
+      const filename = `gitreport-${username}-${period}.pdf`
+
+      reply
+        .header('Content-Type',        'application/pdf')
+        .header('Content-Disposition', `attachment; filename="${filename}"`)
+
+      const stream = generateReportPdf({
+        username:    userRow.username,
+        displayName: userRow.displayName ?? userRow.username,
+        avatarUrl:   userRow.avatarUrl,
+        payload:     finalPayload,
+        narrative:   reportRow.narrative,
+        isOwner,
+      })
+
+      return reply.send(stream)
+    },
+  )
+
+  // ── GET /achievements ──────────────────────────────────────────────────────────────
+  fastify.get(
+    '/achievements',
+    { preHandler: requireAuth },
+    async (req, reply) => {
+      const userId = req.session.userId!
+
+      const earned = await db
+        .select()
+        .from(achievements)
+        .where(eq(achievements.userId, userId))
+        .orderBy(achievements.unlockedAt)
+
+      const defMap = new Map(ACHIEVEMENT_DEFINITIONS.map(d => [d.id, d]))
+
+      const result = earned.map(row => {
+        const def = defMap.get(row.achievementId)
+        return {
+          achievementId: row.achievementId,
+          title:         def?.title         ?? row.achievementId,
+          description:   def?.description   ?? '',
+          meta:          row.meta,
+          unlockedAt:    row.unlockedAt,
+          period:        row.period,
+        }
+      })
+
+      return reply.send({ achievements: result })
+    },
+  )
+
+  // ── GET /public/u/:username — public developer profile archive ────────────
+  // PRD §7.6 Phase 3 — no auth required. Returns all public reports + achievements.
+  fastify.get<{ Params: { username: string } }>(
+    '/public/u/:username',
+    {
+      config: { rateLimit: { max: 30, timeWindow: 60_000 } },
+      schema: {
+        params: {
+          type:       'object',
+          properties: { username: { type: 'string' } },
+          required:   ['username'],
+        },
+      },
+    },
+    async (req, reply) => {
+      const { username } = req.params
+      const profile = await getPublicProfile(username)
+      if (!profile) {
+        return reply.status(404).send({ error: 'User not found' })
+      }
+      return reply.send(profile)
+    },
+  )
 };
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-/** Return the previous calendar month as 'YYYY-MM' */
-function getPrevPeriod(period: string): string {
-  const [year, month] = period.split("-").map(Number);
-  const prev = new Date(year!, month! - 1, 1);
-  prev.setMonth(prev.getMonth() - 1);
-  return `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}`;
-}
-
-/** Fetch the previous period's summary for longitudinal narrative context (PRD §6.1) */
-async function fetchPrevPeriodSummary(
-  userId: number,
-  prevPeriod: string,
-): Promise<PrevPeriodSummary | null> {
-  const [prev] = await db
-    .select({
-      payload: reports.payload,
-      persona: reports.persona,
-      focusScore: reports.focusScore,
-    })
-    .from(reports)
-    .where(and(eq(reports.userId, userId), eq(reports.period, prevPeriod)))
-    .limit(1);
-
-  if (!prev || !prev.payload) return null;
-
-  const p = prev.payload as Record<string, unknown>;
-
-  return {
-    total_commits: (p["total_commits"] as number) ?? 0,
-    focus_score: Number(prev.focusScore ?? 0),
-    dominant_language: getDominantLanguage(
-      p["languages"] as Record<string, number> | undefined,
-    ),
-    persona: (prev.persona as PrevPeriodSummary["persona"]) ?? "The Builder",
-  };
-}
-
-function getDominantLanguage(
-  languages?: Record<string, number>,
-): string | null {
-  if (!languages) return null;
-  let top: string | null = null;
-  let max = 0;
-  for (const [lang, pct] of Object.entries(languages)) {
-    if (pct > max) {
-      max = pct;
-      top = lang;
-    }
-  }
-  return top;
-}
 
 export default reportRoutes;

@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react'
-import { gsap } from 'gsap'
+import { useEffect, useRef, memo } from 'react'
+import type { Context } from 'gsap';
 import { ArrowUp, ArrowDown, Minus } from '@phosphor-icons/react'
 
 interface StatCardProps {
@@ -11,7 +11,7 @@ interface StatCardProps {
   accent?:    string
 }
 
-export function StatCard({
+export const StatCard = memo(function StatCard({
   label,
   value,
   formatter = (n) => n.toLocaleString(),
@@ -30,19 +30,23 @@ export function StatCard({
     const counter = counterObj.current
 
     // gsap.context() scopes all tweens to rootRef — ctx.revert() kills them on unmount
-    const ctx = gsap.context(() => {
-      counter.val = 0
-      gsap.to(counter, {
-        val:      value,
-        duration: 0.7,
-        ease:     'expo.out',
-        onUpdate: () => {
-          el.textContent = formatter(Math.round(counter.val))
-        },
-      })
-    }, rootRef)
+    let ctx: Context;
+    import('gsap').then(({ gsap }) => {
+      if (!rootRef.current || !numRef.current) return;
+      ctx = gsap.context(() => {
+        counter.val = 0
+        gsap.to(counter, {
+          val:      value,
+          duration: 0.7,
+          ease:     'expo.out',
+          onUpdate: () => {
+            el.textContent = formatter(Math.round(counter.val))
+          },
+        })
+      }, rootRef)
+    });
 
-    return () => ctx.revert()
+    return () => ctx?.revert()
   }, [value, formatter])
 
   const deltaColor =
@@ -107,4 +111,4 @@ export function StatCard({
       )}
     </div>
   )
-}
+})

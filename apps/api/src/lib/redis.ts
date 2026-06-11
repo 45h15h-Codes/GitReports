@@ -15,34 +15,33 @@
 
 import IORedis from 'ioredis';
 
-/**
- * Create a new IORedis connection from REDIS_URL.
- *
- * BullMQ requirements:
- *   - maxRetriesPerRequest must be null (prevents BullMQ blocking call errors)
- *   - enableReadyCheck: false (recommended for BullMQ compatibility)
- *
- * Throws immediately if REDIS_URL is not set.
- */
+let _client: IORedis | null = null;
+let _subscriber: IORedis | null = null;
+
+export function getRedisClient(): IORedis {
+  if (!_client) {
+    const url = process.env.REDIS_URL;
+    if (!url) throw new Error('[redis] REDIS_URL environment variable is not set');
+    _client = new IORedis(url, { maxRetriesPerRequest: null, enableReadyCheck: false, lazyConnect: false });
+    _client.on('error', (err: Error) => console.error('[redis client] Connection error:', err.message));
+  }
+  return _client;
+}
+
+export function getRedisSubscriber(): IORedis {
+  if (!_subscriber) {
+    const url = process.env.REDIS_URL;
+    if (!url) throw new Error('[redis] REDIS_URL environment variable is not set');
+    _subscriber = new IORedis(url, { maxRetriesPerRequest: null, enableReadyCheck: false, lazyConnect: false });
+    _subscriber.on('error', (err: Error) => console.error('[redis sub] Connection error:', err.message));
+  }
+  return _subscriber;
+}
+
 export function createRedisConnection(): IORedis {
   const url = process.env.REDIS_URL;
-  if (!url) {
-    throw new Error('[redis] REDIS_URL environment variable is not set');
-  }
-
-  const conn = new IORedis(url, {
-    maxRetriesPerRequest: null,   // required by BullMQ
-    enableReadyCheck:     false,  // recommended for BullMQ
-    lazyConnect:          false,
-  });
-
-  conn.on('error', (err: Error) => {
-    console.error('[redis] Connection error:', err.message);
-  });
-
-  conn.on('connect', () => {
-    console.info('[redis] Connected');
-  });
-
+  if (!url) throw new Error('[redis] REDIS_URL environment variable is not set');
+  const conn = new IORedis(url, { maxRetriesPerRequest: null, enableReadyCheck: false, lazyConnect: false });
+  conn.on('error', (err: Error) => console.error('[redis worker] Connection error:', err.message));
   return conn;
 }

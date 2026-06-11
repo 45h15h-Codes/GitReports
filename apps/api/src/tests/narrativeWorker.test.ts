@@ -42,17 +42,47 @@ vi.mock("../db/client", () => ({
         where: vi.fn().mockResolvedValue(undefined),
       }),
     }),
+    // Steps 4+5: email + achievement evaluation both call db.select
+    select: vi.fn().mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          limit: vi.fn().mockReturnValue({
+            then: vi.fn().mockResolvedValue(null),
+          }),
+          // evaluator calls .where() without .limit (full list query)
+          then: vi.fn().mockResolvedValue([]),
+        }),
+        // count query shape: .select({ value: count() }).from(reports).where()
+        then: vi.fn().mockResolvedValue([{ value: 1 }]),
+      }),
+    }),
+    insert: vi.fn().mockReturnValue({
+      values: vi.fn().mockReturnValue({
+        onConflictDoNothing: vi.fn().mockResolvedValue(undefined),
+      }),
+    }),
   },
 }));
 
 // Mock the Redis factory
 vi.mock("../lib/redis", () => ({
-  createRedisConnection: vi.fn().mockReturnValue({}),
+  getRedisClient: vi.fn().mockReturnValue({}),
+  getRedisSubscriber: vi.fn().mockReturnValue({}),
 }));
 
 // Mock LLM
 vi.mock("../services/narrative/llm", () => ({
   generateNarrative: vi.fn(),
+}));
+
+// Mock email — fire-and-forget, must not affect job outcome
+vi.mock("../lib/email", () => ({
+  sendReportReadyEmail: vi.fn().mockResolvedValue(undefined),
+}));
+
+// Mock achievement evaluator — fire-and-forget
+vi.mock("../services/achievements/evaluator", () => ({
+  evaluateAchievements: vi.fn().mockResolvedValue([]),
 }));
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -136,7 +166,7 @@ describe("startNarrativeWorker — job processor", () => {
 
     // Should have called db.update twice: generating → complete
     expect(db.update).toHaveBeenCalledTimes(2);
-    expect(generateNarrative).toHaveBeenCalledWith(SAMPLE_PAYLOAD);
+    expect(generateNarrative).toHaveBeenCalledWith(SAMPLE_PAYLOAD, expect.any(String));
   });
 
   it("propagates LLM errors (worker failure handler marks as failed)", async () => {

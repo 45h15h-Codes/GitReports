@@ -1,13 +1,19 @@
 import { useState, useEffect }           from 'react'
-import { BrowserRouter, Routes, Route }  from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate }  from 'react-router-dom'
 import { Sun, Moon }                     from '@phosphor-icons/react'
 import { AuthProvider }                  from './context/AuthContext'
 import { ProtectedRoute }                from './components/ProtectedRoute'
 import { Sidebar }                       from './components/Sidebar'
 import { Dashboard }                     from './pages/Dashboard'
 import { SharedReport }                  from './pages/SharedReport'
+import { PublicProfile }                 from './pages/PublicProfile'
 import { ChallengePage }                 from './pages/ChallengePage'
 import { Login }                         from './pages/Login'
+import { ReportsPage }                  from './pages/ReportsPage'
+import { AchievementsPage }             from './pages/AchievementsPage'
+import { ProfilePage }                  from './pages/ProfilePage'
+import { SharePage }                    from './pages/SharePage'
+import { SettingsPage }                 from './pages/SettingsPage'
 import './index.css'
 
 // ── Theme hook — persisted in localStorage ────────────────────────────────
@@ -37,6 +43,7 @@ export default function App() {
         <Routes>
           {/* ── Public routes — no auth, no sidebar ─────────────────────── */}
           <Route path="/login"                          element={<Login />}         />
+          <Route path="/u/:username"                   element={<PublicProfile />} />
           <Route path="/u/:username/:period"            element={<SharedReport />}  />
           <Route path="/challenge/:username/:period"    element={<ChallengePage />} />
 
@@ -50,7 +57,7 @@ export default function App() {
                   style={{ background: 'var(--bg-base)' }}
                 >
                   <Sidebar />
-                  <main className="flex-1 ml-[260px] overflow-x-hidden relative">
+                  <main className="flex-1 ml-[260px] relative">
                     {/* Theme toggle — top-right corner */}
                     <button
                       id="theme-toggle"
@@ -79,6 +86,12 @@ export default function App() {
 
                     <Routes>
                       <Route path="/" element={<Dashboard />} />
+                      <Route path="/dashboard" element={<Navigate replace to="/" />} />
+                      <Route path="/reports"      element={<ReportsPage />}      />
+                      <Route path="/achievements" element={<AchievementsPage />} />
+                      <Route path="/profile"      element={<ProfilePage />}      />
+                      <Route path="/share"        element={<SharePage />}        />
+                      <Route path="/settings"     element={<SettingsPage />}     />
                     </Routes>
                   </main>
                 </div>

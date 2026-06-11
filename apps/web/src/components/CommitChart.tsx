@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
-import { gsap } from "gsap";
+import { useEffect, useRef, memo } from "react";
+import type { Context } from 'gsap';
 
 interface CommitChartProps {
   dailyCommits: number[];
@@ -15,30 +15,35 @@ function barColor(count: number, max: number): string {
   return "#39D353";
 }
 
-export function CommitChart({ dailyCommits, period }: CommitChartProps) {
+export const CommitChart = memo(function CommitChart({ dailyCommits, period }: CommitChartProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const max = Math.max(...dailyCommits, 1);
+  const isYearly = period.length === 4;
 
-  const [year, month] = period.split("-");
-  const monthName = new Date(
-    parseInt(year),
-    parseInt(month) - 1,
-  ).toLocaleString("en-US", { month: "long" });
+  const [yearStr, monthStr] = period.split("-");
+  const monthName = isYearly 
+    ? "Year" 
+    : new Date(parseInt(yearStr!), parseInt(monthStr!) - 1).toLocaleString("en-US", { month: "long" });
+  const year = parseInt(yearStr!);
 
   useEffect(() => {
     if (!rootRef.current) return;
 
-    const ctx = gsap.context(() => {
-      const bars = rootRef.current!.querySelectorAll<HTMLElement>("[data-bar]");
-      // Fast mode: short stagger, power4.out — PRD §4.1
-      gsap.fromTo(
-        bars,
-        { scaleY: 0, transformOrigin: "bottom" },
-        { scaleY: 1, duration: 0.45, ease: "power4.out", stagger: 0.012 },
-      );
-    }, rootRef);
+    let ctx: Context;
+    import("gsap").then(({ gsap }) => {
+      if (!rootRef.current) return;
+      ctx = gsap.context(() => {
+        const bars = rootRef.current!.querySelectorAll<HTMLElement>("[data-bar]");
+        // Fast mode: short stagger, power4.out — PRD §4.1
+        gsap.fromTo(
+          bars,
+          { scaleY: 0, transformOrigin: "bottom" },
+          { scaleY: 1, duration: 0.45, ease: "power4.out", stagger: 0.012 },
+        );
+      }, rootRef);
+    });
 
-    return () => ctx.revert();
+    return () => ctx?.revert();
   }, []); // runs once per mount — period change forces remount via key prop in Dashboard
 
   return (
@@ -53,10 +58,10 @@ export function CommitChart({ dailyCommits, period }: CommitChartProps) {
             className="font-mono text-[11px] font-medium uppercase tracking-widest mb-1"
             style={{ color: "#484F58", letterSpacing: "0.08em" }}
           >
-            Daily Commits
+            {isYearly ? "Monthly Commits" : "Daily Commits"}
           </div>
           <div className="font-mono text-[13px]" style={{ color: "#8B949E" }}>
-            {monthName} {year}
+            {isYearly ? year : `${monthName} ${year}`}
           </div>
         </div>
         <div className="font-mono text-[11px]" style={{ color: "#484F58" }}>
@@ -68,10 +73,14 @@ export function CommitChart({ dailyCommits, period }: CommitChartProps) {
         className="flex items-end gap-[3px]"
         style={{ height: 80 }}
         role="img"
-        aria-label={`Daily commit frequency for ${monthName} ${year}`}
+        aria-label={`${isYearly ? "Monthly" : "Daily"} commit frequency for ${isYearly ? year : `${monthName} ${year}`}`}
       >
         {dailyCommits.map((count, i) => {
           const heightPct = count === 0 ? 4 : Math.max(8, (count / max) * 100);
+          const title = isYearly 
+            ? `Month ${i + 1}: ${count} commit${count !== 1 ? "s" : ""}`
+            : `Day ${i + 1}: ${count} commit${count !== 1 ? "s" : ""}`;
+            
           return (
             <div
               key={i}
@@ -82,23 +91,29 @@ export function CommitChart({ dailyCommits, period }: CommitChartProps) {
                 background: barColor(count, max),
                 transformOrigin: "bottom",
               }}
-              title={`Day ${i + 1}: ${count} commit${count !== 1 ? "s" : ""}`}
+              title={title}
             />
           );
         })}
       </div>
 
       <div className="flex justify-between mt-2">
-        {[1, 8, 15, 22, dailyCommits.length].map((day) => (
-          <span
-            key={day}
-            className="font-mono text-[9px]"
-            style={{ color: "#484F58" }}
-          >
-            {day}
-          </span>
-        ))}
+        {isYearly ? (
+          ['J','F','M','A','M','J','J','A','S','O','N','D'].map((m, i) => (
+            <span key={i} className="font-mono text-[9px] flex-1 text-center" style={{ color: "#484F58" }}>{m}</span>
+          ))
+        ) : (
+          [1, 8, 15, 22, dailyCommits.length].map((day) => (
+            <span
+              key={day}
+              className="font-mono text-[9px]"
+              style={{ color: "#484F58" }}
+            >
+              {day}
+            </span>
+          ))
+        )}
       </div>
     </div>
   );
-}
+});

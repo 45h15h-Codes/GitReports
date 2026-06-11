@@ -26,7 +26,7 @@ export type DeveloperPersona =
 
 export type PeakHourBlock = 'morning' | 'afternoon' | 'evening' | 'night'
 
-export type NarrativeStatus = 'pending' | 'generating' | 'complete' | 'failed'
+export type NarrativeStatus = 'queued' | 'pending' | 'generating' | 'complete' | 'failed'
 
 // ── Repo aggregate ────────────────────────────────────────────────────────────
 
@@ -135,12 +135,14 @@ export interface NarrativeStatusResponse {
 // ── Auth user — returned by GET /auth/me ──────────────────────────────────────
 
 export interface AuthUser {
-  id:          number
-  username:    string
-  displayName: string | null
-  avatarUrl:   string | null
-  tokenScope:  string
-  createdAt:   string
+  id:               number
+  username:         string
+  displayName:      string | null
+  avatarUrl:        string | null
+  tokenScope:       string
+  createdAt:        string
+  hasSeenCinematic: boolean
+  hasGeminiApiKey:  boolean
 }
 
 // ── Developer profile — shape consumed by ProfileCard ───────────────
@@ -153,14 +155,23 @@ export interface DeveloperProfile {
 }
 
 // ── Generate report response — POST /reports/generate ────────────────────────
+// D.3: Route now returns 202 (queued) or 200 (cached). Union handles both.
 
-export interface GenerateReportResponse {
-  report:          MonthlyReport
-  cached:          boolean
-  rateLimitHit?:   boolean
-  reposProcessed?: number
-  reposSkipped?:   number
-}
+export type GenerateReportResponse =
+  | {
+      // 200 — cached complete report returned immediately
+      report:  MonthlyReport
+      cached:  true
+      queued:  false
+    }
+  | {
+      // 202 — job enqueued, poll SSE for updates
+      status:  'queued' | 'in_progress'
+      period:  string
+      queued:  boolean
+      report?: undefined
+      cached?: undefined
+    }
 
 // ── Reports list response — GET /reports ─────────────────────────────────────
 

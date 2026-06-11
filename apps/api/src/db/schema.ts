@@ -24,10 +24,12 @@ export const users = pgTable(
     avatarUrl: text("avatar_url"),
     email: text("email"), // nullable — GitHub email privacy
     accessToken: text("access_token").notNull(), // AES-256 encrypted
+    geminiApiKey: text("gemini_api_key"), // AES-256 encrypted, nullable
     tokenScope: text("token_scope").notNull().default("public_repo"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
     lastActiveAt: timestamp("last_active_at").notNull().defaultNow(),
+    hasSeenCinematic: boolean('has_seen_cinematic').notNull().default(false),
     deletedAt: timestamp("deleted_at"), // soft delete → then hard delete job
   },
   (table) => ({
@@ -65,15 +67,14 @@ export const reports = pgTable(
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => ({
-    userPeriodIdx: index("reports_user_period_idx").on(
+    userPeriodDescIdx: index("reports_user_period_desc_idx").on(
       table.userId,
-      table.period,
+      table.period.desc(),
     ),
     userPeriodUniq: unique("reports_user_period_unique").on(
       table.userId,
       table.period,
     ),
-    publicIdx: index("reports_public_idx").on(table.isPublic, table.period),
   }),
 );
 
@@ -117,10 +118,47 @@ export const sessions = pgTable(
   }),
 );
 
+export const failedJobs = pgTable('failed_jobs', {
+  id:          serial('id').primaryKey(),
+  jobId:       text('job_id').notNull(),
+  jobName:     text('job_name').notNull(),
+  queueName:   text('queue_name').notNull(),
+  payload:     jsonb('payload').notNull(),
+  errorMessage: text('error_message').notNull(),
+  attemptsMade: integer('attempts_made').notNull(),
+  failedAt:    timestamp('failed_at').notNull().defaultNow(),
+});
+
+// ─── Achievements ──────────────────────────────────────────────────────────────
+// One row per user per achievement unlock. Unique on (userId, achievementId).
+// Unlocks are permanent — no revocation.
+export const achievements = pgTable(
+  'achievements',
+  {
+    id:            serial('id').primaryKey(),
+    userId:        integer('user_id')
+                     .notNull()
+                     .references(() => users.id, { onDelete: 'cascade' }),
+    achievementId: varchar('achievement_id', { length: 64 }).notNull(),
+    unlockedAt:    timestamp('unlocked_at').notNull().defaultNow(),
+    period:        varchar('period', { length: 7 }).notNull(), // month that triggered it
+    meta:          jsonb('meta'),  // optional context e.g. { streak: 30 }
+  },
+  (table) => ({
+    userAchievementUniq: unique('achievements_user_achievement_unique').on(
+      table.userId,
+      table.achievementId,
+    ),
+    userIdIdx: index('achievements_user_id_idx').on(table.userId),
+  }),
+)
+
 // ─── Type exports ─────────────────────────────────────────────────────────────
-export type User = typeof users.$inferSelect;
-export type NewUser = typeof users.$inferInsert;
-export type Report = typeof reports.$inferSelect;
-export type NewReport = typeof reports.$inferInsert;
-export type ChallengeLink = typeof challengeLinks.$inferSelect;
+export type User            = typeof users.$inferSelect;
+export type NewUser         = typeof users.$inferInsert;
+export type Report          = typeof reports.$inferSelect;
+export type NewReport       = typeof reports.$inferInsert;
+export type ChallengeLink   = typeof challengeLinks.$inferSelect;
 export type NewChallengeLink = typeof challengeLinks.$inferInsert;
+export type Achievement     = typeof achievements.$inferSelect;
+export type NewAchievement  = typeof achievements.$inferInsert;

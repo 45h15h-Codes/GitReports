@@ -115,3 +115,28 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ─── Dashboard button hover states (D.2) ──────────────────────────────── */
+.dashboard-action-btn:hover {
+  background: var(--bg-overlay) !important;
+  color:      var(--text-primary) !important;
+}
+.dashboard-challenge-btn:hover {
+  background: #3D2010 !important;
+  color:      #E87040 !important;
+}
+
+/* ─── Sidebar nav hover states (D.2) ────────────────────────────────────── */
+.sidebar-nav-link:not([aria-current="page"]):hover {
+  background: #1C2128 !important;
+  color:      #E6EDF3 !important;
+}
+.sidebar-action-btn:hover {
+  background: #1C2128 !important;
+  color:      #E6EDF3 !important;
+}
+.sidebar-logout-btn:hover {
+  background: #2D1010 !important;
+  color:      #F85149 !important;
+}
+

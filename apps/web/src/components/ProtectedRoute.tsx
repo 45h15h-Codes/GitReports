@@ -1,12 +1,13 @@
 import { Navigate } from 'react-router-dom'
 import { useAuth }   from '../context/AuthContext'
+import { GeminiApiKeyModal } from './GeminiApiKeyModal'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading } = useAuth()
+  const { user, isAuthenticated, isLoading } = useAuth()
 
   if (isLoading) {
     return (
@@ -33,5 +34,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     return <Navigate to="/login" replace />
   }
 
-  return <>{children}</>
+  return (
+    <>
+      {children}
+      {user && !user.hasGeminiApiKey && <GeminiApiKeyModal />}
+    </>
+  )
 }

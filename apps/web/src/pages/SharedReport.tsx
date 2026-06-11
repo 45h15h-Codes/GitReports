@@ -1,8 +1,8 @@
 import { useParams, Link }   from 'react-router-dom'
 import { useQuery }           from '@tanstack/react-query'
-import ProfileCard            from '../components/ProfileCard'
+import { ProfileCard }        from '../components/ProfileCard'
 import { ShareCTA }           from '../components/ShareCTA'
-import { getPublicReport }    from '../lib/api'
+import { api, getPublicReport } from '../lib/api'
 import { formatPeriod }       from '../utils/persona'
 import { ApiError }           from '../lib/api'
 
@@ -100,6 +100,18 @@ export function SharedReport() {
               GitReport
             </span>
           </div>
+          {/* Link from individual report back to profile archive */}
+          {username && (
+            <Link
+              to={`/u/${username}`}
+              className="font-mono text-[12px]"
+              style={{ color: '#8B949E', textDecoration: 'none' }}
+              onMouseEnter={e => { e.currentTarget.style.color = '#E6EDF3' }}
+              onMouseLeave={e => { e.currentTarget.style.color = '#8B949E' }}
+            >
+              ← {username}'s profile
+            </Link>
+          )}
           <ShareCTA variant="inline" />
         </nav>
 
@@ -166,6 +178,35 @@ export function SharedReport() {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Languages */}
+          <div className="mb-4 flex justify-end">
+            <button
+              onClick={() => api.exportReportPdf(username!, period!)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-mono text-[12px] font-medium transition-all duration-150 cursor-pointer"
+              style={{
+                background: '#1C2128',
+                color:      '#8B949E',
+                border:     '1px solid #30363D',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#21262D'
+                e.currentTarget.style.color      = '#E6EDF3'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#1C2128'
+                e.currentTarget.style.color      = '#8B949E'
+              }}
+              aria-label="Download PDF report"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Download PDF
+            </button>
           </div>
 
           {/* Languages */}

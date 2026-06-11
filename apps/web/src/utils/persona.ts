@@ -14,20 +14,23 @@ export const PERSONA_META: Record<
 }
 
 export function formatPeriod(period: string): string {
+  if (period.length === 4) return period
   const [year, month] = period.split('-')
-  return new Date(parseInt(year), parseInt(month) - 1)
+  return new Date(parseInt(year!), parseInt(month!) - 1)
     .toLocaleString('en-US', { month: 'long', year: 'numeric' })
 }
 
 export function formatMonthShort(period: string): string {
+  if (period.length === 4) return period
   const [year, month] = period.split('-')
-  return new Date(parseInt(year), parseInt(month) - 1)
+  return new Date(parseInt(year!), parseInt(month!) - 1)
     .toLocaleString('en-US', { month: 'short' })
 }
 
 export function formatMonthYear(period: string): string {
+  if (period.length === 4) return period
   const [year] = period.split('-')
-  return year
+  return year!
 }
 
 export function deltaPercent(current: number, prev: number): number {

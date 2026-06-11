@@ -8,6 +8,41 @@
       "when": 1779711733601,
       "tag": "0000_wandering_white_tiger",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1780979260120,
+      "tag": "0001_slimy_the_stranger",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1781064321054,
+      "tag": "0002_talented_black_bird",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1781070149897,
+      "tag": "0003_silent_leper_queen",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1781172636051,
+      "tag": "0004_narrow_kylun",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1781181927145,
+      "tag": "0005_red_black_tom",
+      "breakpoints": true
     }
   ]
 }

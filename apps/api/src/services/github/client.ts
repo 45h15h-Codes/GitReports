@@ -98,59 +98,72 @@ async function ghFetchAll<T>(
   params:   Record<string, string | number> = {},
   maxPages  = 10,
 ): Promise<T[]> {
-  const results: T[] = [];
-  let page = 1;
+  const url = new URL(`${GITHUB_API_BASE}${endpoint}`);
+  for (const [k, v] of Object.entries(params)) {
+    url.searchParams.set(k, String(v));
+  }
+  url.searchParams.set('per_page', String(MAX_PER_PAGE));
+  url.searchParams.set('page', '1');
 
-  while (page <= maxPages) {
-    const url = new URL(`${GITHUB_API_BASE}${endpoint}`);
-    for (const [k, v] of Object.entries(params)) {
-      url.searchParams.set(k, String(v));
-    }
-    url.searchParams.set('per_page', String(MAX_PER_PAGE));
-    url.searchParams.set('page', String(page));
+  const headers = {
+    Authorization:  `Bearer ${token}`,
+    Accept:         'application/vnd.github.v3+json',
+    'User-Agent':   'GitReport/3.0',
+    'X-GitHub-Api-Version': '2022-11-28',
+  };
 
-    const res = await fetch(url.toString(), {
-      headers: {
-        Authorization:  `Bearer ${token}`,
-        Accept:         'application/vnd.github.v3+json',
-        'User-Agent':   'GitReport/3.0',
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
-    });
+  const res = await fetch(url.toString(), { headers });
 
-    if (res.status === 429 || res.status === 403) {
-      const retryAfter = res.headers.get('Retry-After');
-      const resetHeader = res.headers.get('X-RateLimit-Reset');
-      const resetAt = retryAfter
-        ? new Date(Date.now() + Number(retryAfter) * 1000)
-        : resetHeader
-          ? new Date(Number(resetHeader) * 1000)
-          : new Date(Date.now() + 60_000);
-      throw new GitHubRateLimitError(resetAt);
-    }
-
-    if (!res.ok) {
-      throw new GitHubApiError(
-        `GitHub API error: ${res.status} — ${endpoint}`,
-        res.status,
-        endpoint,
-      );
-    }
-
-    const page_data = await res.json() as T[];
-
-    // Handle 202 Accepted (stats being computed) — return empty, caller retries
-    if (!Array.isArray(page_data)) break;
-
-    results.push(...page_data);
-
-    // If fewer than MAX_PER_PAGE returned, we've reached the last page
-    if (page_data.length < MAX_PER_PAGE) break;
-
-    page++;
+  if (res.status === 429 || res.status === 403) {
+    const retryAfter = res.headers.get('Retry-After');
+    const resetHeader = res.headers.get('X-RateLimit-Reset');
+    const resetAt = retryAfter
+      ? new Date(Date.now() + Number(retryAfter) * 1000)
+      : resetHeader
+        ? new Date(Number(resetHeader) * 1000)
+        : new Date(Date.now() + 60_000);
+    throw new GitHubRateLimitError(resetAt);
   }
 
-  return results;
+  if (!res.ok) {
+    throw new GitHubApiError(`GitHub API error: ${res.status} — ${endpoint}`, res.status, endpoint);
+  }
+
+  const page_data = await res.json() as T[];
+  if (!Array.isArray(page_data)) return [];
+
+  const linkHeader = res.headers.get('Link');
+  let lastPage = 1;
+  if (linkHeader) {
+    const lastMatch = linkHeader.match(/<[^>]+[?&]page=(\d+)[^>]*>; rel="last"/);
+    if (lastMatch) {
+      lastPage = parseInt(lastMatch[1]!, 10);
+    } else if (linkHeader.includes('rel="next"')) {
+      // fallback if last is missing but next is present (rare)
+      lastPage = maxPages; 
+    }
+  }
+
+  const targetPages = Math.min(lastPage, maxPages);
+  if (targetPages <= 1) return page_data;
+
+  // Fetch remaining pages concurrently
+  const fetchPage = async (p: number) => {
+    const pUrl = new URL(url.toString());
+    pUrl.searchParams.set('page', String(p));
+    const pRes = await fetch(pUrl.toString(), { headers });
+    if (!pRes.ok) return [];
+    const data = await pRes.json() as T[];
+    return Array.isArray(data) ? data : [];
+  };
+
+  const remainingPromises = [];
+  for (let p = 2; p <= targetPages; p++) {
+    remainingPromises.push(fetchPage(p));
+  }
+
+  const remainingResults = await Promise.all(remainingPromises);
+  return [page_data, ...remainingResults.flat()] as T[];
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

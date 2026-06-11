@@ -1,44 +1,39 @@
 import { useState, useEffect, useRef }     from 'react'
 import { useMutation, useQueryClient }     from '@tanstack/react-query'
 import { Lightning, ArrowClockwise }       from '@phosphor-icons/react'
-import { generateReport, getReportStatus } from '../lib/api'
+import { generateReport, streamReportStatus } from '../lib/api'
 import type { NarrativeStatus }            from '../types/api'
 
 interface GenerateReportButtonProps {
-  period?:    string   // defaults to previous month
-  onSuccess?: () => void
-  variant?:   'primary' | 'subtle'
+  period?:      string   // defaults to previous month
+  onSuccess?:   () => void
+  onGenerated?: () => void  // alias accepted by ReportsPage
+  variant?:     'primary' | 'subtle'
 }
 
-const POLL_INTERVAL_MS = 2000
-const POLL_TIMEOUT_MS  = 30_000
+
+const POLL_TIMEOUT_MS  = 3 * 60_000  // 3 min — ingestion can take 30-60s on large accounts
 
 type ButtonState = 'idle' | 'generating' | 'polling' | 'done' | 'timeout' | 'error'
 
 export function GenerateReportButton({
   period,
   onSuccess,
+  onGenerated,
   variant = 'primary',
 }: GenerateReportButtonProps) {
+  // Accept either callback name
+  const onDone = onSuccess ?? onGenerated
   const qc               = useQueryClient()
   const [state, setState] = useState<ButtonState>('idle')
-  const pollRef          = useRef<ReturnType<typeof setInterval> | null>(null)
-  const timeoutRef       = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const streamRef        = useRef<(() => void) | null>(null)
+  const timeoutRef       = useRef<NodeJS.Timeout | null>(null)
 
   function stopPolling() {
-    if (pollRef.current)   clearInterval(pollRef.current)
+    if (streamRef.current) streamRef.current()
     if (timeoutRef.current) clearTimeout(timeoutRef.current)
-    pollRef.current    = null
+    streamRef.current  = null
     timeoutRef.current = null
-  }
-
-  async function pollStatus(p: string) {
-    try {
-      const res = await getReportStatus(p)
-      handleStatusUpdate(res.narrativeStatus, p)
-    } catch {
-      // Transient poll failure — keep going until timeout
-    }
   }
 
   function handleStatusUpdate(status: NarrativeStatus, p: string) {
@@ -48,7 +43,7 @@ export function GenerateReportButton({
       // Invalidate so dashboard picks up fresh data
       void qc.invalidateQueries({ queryKey: ['report', p] })
       void qc.invalidateQueries({ queryKey: ['reports'] })
-      onSuccess?.()
+      onDone?.()
     } else if (status === 'failed') {
       stopPolling()
       setState('error')
@@ -61,7 +56,15 @@ export function GenerateReportButton({
 
   function startPolling(p: string) {
     setState('polling')
-    pollRef.current = setInterval(() => void pollStatus(p), POLL_INTERVAL_MS)
+    
+    streamRef.current = streamReportStatus(
+      p,
+      (data) => handleStatusUpdate(data.narrativeStatus, p),
+      () => {
+        // stream error, just let timeout handle it
+      }
+    )
+
     timeoutRef.current = setTimeout(() => {
       stopPolling()
       setState('timeout')
@@ -72,15 +75,19 @@ export function GenerateReportButton({
     mutationFn: () => generateReport(period),
     onMutate:   () => setState('generating'),
     onSuccess:  (data) => {
-      const p = data.report.period
-      if (data.report.narrativeStatus === 'complete') {
-        // Already complete (cached report) — skip polling
+      if (data.cached && data.report) {
+        // 200 — cached complete report, no polling needed
+        const p = data.report.period
         void qc.invalidateQueries({ queryKey: ['report', p] })
         void qc.invalidateQueries({ queryKey: ['reports'] })
         setState('done')
-        onSuccess?.()
+        onDone?.()
+      } else if ('period' in data && data.period) {
+        // 202 — job enqueued, start SSE polling on returned period
+        startPolling(data.period)
       } else {
-        startPolling(p)
+        // Unexpected shape — surface as error
+        setState('error')
       }
     },
     onError: () => setState('error'),

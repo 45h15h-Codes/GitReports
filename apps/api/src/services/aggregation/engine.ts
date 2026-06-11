@@ -53,9 +53,17 @@ function toDateStr(iso: string): string {
 
 /** Parse 'YYYY-MM' period into [startDate, endDate] ISO-8601 strings */
 export function periodToDates(period: string): { since: string; until: string } {
+  if (period.length === 4) {
+    const year = parseInt(period, 10);
+    return {
+      since: new Date(year, 0, 1).toISOString(),
+      until: new Date(year, 11, 31, 23, 59, 59).toISOString(),
+    };
+  }
+
   const [year, month] = period.split('-').map(Number);
-  const start = new Date(year, month - 1, 1);
-  const end   = new Date(year, month, 0, 23, 59, 59); // last day of month
+  const start = new Date(year, month! - 1, 1);
+  const end   = new Date(year, month!, 0, 23, 59, 59); // last day of month
   return {
     since: start.toISOString(),
     until: end.toISOString(),
@@ -282,16 +290,30 @@ export function aggregateMonthlyData(input: AggregationInput): AiPayload {
   const persona         = derivePersona(repoAggregates);
   const languages       = buildLanguageBreakdown(repoAggregates);
 
-  // Build daily_commits array for the month
-  const [yearStr, monthStr] = period.split('-');
-  const year = parseInt(yearStr, 10);
-  const month = parseInt(monthStr, 10);
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const dailyCommits = new Array(daysInMonth).fill(0);
-  for (const dateStr of allCommitDates) {
-    const day = parseInt(dateStr.slice(8, 10), 10);
-    if (day >= 1 && day <= daysInMonth) {
-      dailyCommits[day - 1]++;
+  // Build daily_commits array for the month/year
+  let dailyCommits: number[];
+  
+  if (period.length === 4) {
+    // Yearly report: Group commits into 12 monthly buckets
+    dailyCommits = new Array(12).fill(0);
+    for (const dateStr of allCommitDates) {
+      const commitMonth = parseInt(dateStr.slice(5, 7), 10);
+      if (commitMonth >= 1 && commitMonth <= 12) {
+        dailyCommits[commitMonth - 1]++;
+      }
+    }
+  } else {
+    // Monthly report: Group commits into daily buckets
+    const [yearStr, monthStr] = period.split('-');
+    const year = parseInt(yearStr!, 10);
+    const month = parseInt(monthStr!, 10);
+    const daysInMonth = new Date(year, month, 0).getDate();
+    dailyCommits = new Array(daysInMonth).fill(0);
+    for (const dateStr of allCommitDates) {
+      const day = parseInt(dateStr.slice(8, 10), 10);
+      if (day >= 1 && day <= daysInMonth) {
+        dailyCommits[day - 1]++;
+      }
     }
   }
 

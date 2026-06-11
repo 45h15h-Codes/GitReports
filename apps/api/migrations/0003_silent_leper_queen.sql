@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "has_seen_cinematic" boolean DEFAULT false NOT NULL;

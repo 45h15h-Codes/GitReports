@@ -3,7 +3,7 @@ import { getReports } from '../lib/api'
 
 /**
  * Fetch the list of available report periods for the authenticated user.
- * Returns periods sorted newest first ('YYYY-MM' strings).
+ * Returns periods sorted newest first ('YYYY-MM' or 'YYYY' strings).
  */
 export function useAvailableMonths(): {
   months:    string[]
