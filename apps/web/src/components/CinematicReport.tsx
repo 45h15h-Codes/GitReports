@@ -242,8 +242,7 @@ export function CinematicReport({
         ].map(card => (
           <div
             key={card.id}
-            className="relative rounded-xl p-5 flex flex-col gap-3"
-            style={{ background: '#161B22', border: '1px solid #21262D' }}
+            className="relative rounded-[2rem] p-5 flex flex-col gap-3 bg-white/[0.02] border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-xl transition-all duration-300 hover:bg-white/[0.04]"
           >
             <div
               className="absolute top-0 left-5 right-5 h-[2px] rounded-full"
@@ -278,8 +277,7 @@ export function CinematicReport({
       {/* Beat 6 — commit bar chart */}
       <div
         id="cin-chart"
-        className="w-full max-w-xl rounded-xl p-5"
-        style={{ background: '#161B22', border: '1px solid #21262D' }}
+        className="w-full max-w-xl rounded-[2rem] p-5 bg-white/[0.02] border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-xl transition-all duration-300 hover:bg-white/[0.04]"
       >
         <div className="font-mono text-[11px] uppercase tracking-widest mb-4" style={{ color: '#484F58' }}>
           Daily Commits — {monthName} {year}
@@ -308,8 +306,7 @@ export function CinematicReport({
       {/* Beat 7 — AI summary */}
       {narrative && (
         <div
-          className="w-full max-w-xl rounded-xl p-6"
-          style={{ background: '#161B22', border: '1px solid #21262D' }}
+          className="w-full max-w-xl rounded-[2rem] p-6 bg-white/[0.02] border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-xl transition-all duration-300 hover:bg-white/[0.04]"
         >
           <div className="font-mono text-[11px] uppercase tracking-widest mb-4" style={{ color: '#484F58' }}>
             {monthName} Summary

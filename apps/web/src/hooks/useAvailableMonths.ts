@@ -16,7 +16,7 @@ export function useAvailableMonths(): {
     staleTime: 5 * 60 * 1000,
   })
 
-  const months = (data?.reports ?? [])
+  const months = ((data as any)?.reports ?? [])
     .map(r => r.period)
     .sort((a, b) => b.localeCompare(a))  // newest first
 

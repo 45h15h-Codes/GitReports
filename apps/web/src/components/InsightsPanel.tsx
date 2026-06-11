@@ -1,5 +1,5 @@
 import { useEffect, useRef, memo } from 'react'
-import type { Context } from 'gsap';
+
 import { Lock, Sparkle } from '@phosphor-icons/react'
 import type { DeveloperPersona } from '../types/api'
 import { PERSONA_META } from '../utils/persona'
@@ -37,7 +37,7 @@ export const InsightsPanel = memo(function InsightsPanel({
     // Compute inside effect — satisfies exhaustive-deps
     const circumference = 2 * Math.PI * RADIUS
 
-    let ctx: Context;
+    let ctx: any;
     import('gsap').then(({ gsap }) => {
       if (!gaugeRef.current || !rootRef.current) return;
       ctx = gsap.context(() => {
@@ -64,8 +64,7 @@ export const InsightsPanel = memo(function InsightsPanel({
   return (
     <div
       ref={rootRef}
-      className="rounded-xl p-5 flex flex-col gap-5"
-      style={{ background: '#161B22', border: '1px solid #21262D' }}
+      className="rounded-[2rem] p-5 flex flex-col gap-5 bg-white/[0.02] border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-xl transition-all duration-300 hover:bg-white/[0.04]"
     >
       {/* Header */}
       <div className="flex items-center justify-between">

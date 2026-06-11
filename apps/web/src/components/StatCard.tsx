@@ -1,5 +1,5 @@
 import { useEffect, useRef, memo } from 'react'
-import type { Context } from 'gsap';
+
 import { ArrowUp, ArrowDown, Minus } from '@phosphor-icons/react'
 
 interface StatCardProps {
@@ -30,7 +30,7 @@ export const StatCard = memo(function StatCard({
     const counter = counterObj.current
 
     // gsap.context() scopes all tweens to rootRef — ctx.revert() kills them on unmount
-    let ctx: Context;
+    let ctx: any;
     import('gsap').then(({ gsap }) => {
       if (!rootRef.current || !numRef.current) return;
       ctx = gsap.context(() => {
@@ -62,8 +62,7 @@ export const StatCard = memo(function StatCard({
   return (
     <div
       ref={rootRef}
-      className="relative rounded-xl p-5 flex flex-col gap-4 overflow-hidden"
-      style={{ background: '#161B22', border: '1px solid #21262D' }}
+      className="relative rounded-[2rem] p-6 flex flex-col gap-4 overflow-hidden bg-white/[0.02] border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-xl transition-all duration-300 hover:bg-white/[0.04]"
     >
       {/* Accent top bar — color-coded per stat, not persona */}
       <div
@@ -73,8 +72,7 @@ export const StatCard = memo(function StatCard({
 
       <div className="flex items-center justify-between">
         <span
-          className="font-mono text-[11px] font-medium uppercase tracking-widest"
-          style={{ color: '#484F58', letterSpacing: '0.08em' }}
+          className="font-mono text-[11px] font-medium uppercase tracking-[0.15em] text-white/50"
         >
           {label}
         </span>
@@ -83,12 +81,10 @@ export const StatCard = memo(function StatCard({
 
       <span
         ref={numRef}
-        className="font-display font-bold"
+        className="font-display font-medium tabular-nums text-white"
         style={{
-          fontSize: '2.75rem',
+          fontSize: '3rem',
           lineHeight: 1,
-          color: '#E6EDF3',
-          fontVariantNumeric: 'tabular-nums',
         }}
         aria-label={`${label}: ${formatter(value)}`}
       >
@@ -104,7 +100,7 @@ export const StatCard = memo(function StatCard({
             <DeltaIcon size={11} weight="bold" />
             {Math.abs(delta)}%
           </span>
-          <span className="font-mono text-[11px]" style={{ color: '#484F58' }}>
+          <span className="font-mono text-[11px] text-white/40">
             vs last month
           </span>
         </div>

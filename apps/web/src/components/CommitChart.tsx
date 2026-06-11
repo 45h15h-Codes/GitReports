@@ -1,5 +1,5 @@
 import { useEffect, useRef, memo } from "react";
-import type { Context } from 'gsap';
+
 
 interface CommitChartProps {
   dailyCommits: number[];
@@ -29,7 +29,7 @@ export const CommitChart = memo(function CommitChart({ dailyCommits, period }: C
   useEffect(() => {
     if (!rootRef.current) return;
 
-    let ctx: Context;
+    let ctx: any;
     import("gsap").then(({ gsap }) => {
       if (!rootRef.current) return;
       ctx = gsap.context(() => {
@@ -49,8 +49,7 @@ export const CommitChart = memo(function CommitChart({ dailyCommits, period }: C
   return (
     <div
       ref={rootRef}
-      className="rounded-xl p-5"
-      style={{ background: "#161B22", border: "1px solid #21262D" }}
+      className="rounded-[2rem] p-5 bg-white/[0.02] border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-xl transition-all duration-300 hover:bg-white/[0.04]"
     >
       <div className="flex items-end justify-between mb-5">
         <div>

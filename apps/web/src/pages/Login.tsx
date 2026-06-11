@@ -1,13 +1,17 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Lightning }  from '@phosphor-icons/react'
-import { useAuth }    from '../context/AuthContext'
+import { Lightning, GithubLogo } from '@phosphor-icons/react'
+import { useAuth } from '../context/AuthContext'
+import gsap from 'gsap'
 
 export function Login() {
   const { isAuthenticated, isLoading, login } = useAuth()
-  const navigate     = useNavigate()
-  const [params]     = useSearchParams()
-  const authError    = params.get('auth_error')
+  const navigate = useNavigate()
+  const [params] = useSearchParams()
+  const authError = params.get('auth_error')
+
+  const rightPanelRef = useRef<HTMLDivElement>(null)
+  const imageRef = useRef<HTMLImageElement>(null)
 
   // Already authenticated → go to dashboard
   useEffect(() => {
@@ -16,99 +20,122 @@ export function Login() {
     }
   }, [isAuthenticated, isLoading, navigate])
 
+  // GSAP Cinematic Entrance & Motion
+  useEffect(() => {
+    // Subtle infinite zoom on the background image
+    if (imageRef.current) {
+      gsap.to(imageRef.current, {
+        scale: 1.05,
+        duration: 20,
+        repeat: -1,
+        yoyo: true,
+        ease: "sine.inOut"
+      })
+    }
+
+    // Stagger text and CTA entry
+    gsap.fromTo('.login-stagger > *',
+      { y: 30, opacity: 0 },
+      { y: 0, opacity: 1, duration: 1, stagger: 0.1, ease: "power3.out", delay: 0.2 }
+    )
+  }, [])
+
   const errorMessage: Record<string, string> = {
     denied: 'GitHub access was denied. Please try again.',
     server: 'Something went wrong during authentication. Please try again.',
   }
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center"
-      style={{ background: '#0D1117' }}
-    >
-      <div className="flex flex-col items-center gap-8 max-w-sm w-full px-6">
-
-        {/* Logo */}
-        <div className="flex items-center gap-3">
-          <div
-            className="w-9 h-9 rounded-lg flex items-center justify-center"
-            style={{ background: '#58A6FF' }}
-          >
-            <Lightning size={18} weight="fill" color="#0D1117" />
+    <div className="flex min-h-[100dvh] w-full bg-[var(--canvas)] text-[var(--text-primary)]">
+      
+      {/* LEFT: AUTH PANEL */}
+      <div className="w-full md:w-1/2 flex flex-col justify-center px-8 md:px-16 lg:px-24 relative z-10">
+        
+        {/* Navigation / Logo */}
+        <div className="absolute top-8 left-8 md:top-12 md:left-12 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[var(--surface-1)] border border-[var(--border-default)]">
+            <Lightning size={18} weight="fill" className="text-[var(--text-primary)]" />
           </div>
-          <span
-            className="font-display font-bold text-[22px]"
-            style={{ color: '#E6EDF3' }}
-          >
-            GitReport
-          </span>
+          <span className="font-display font-medium tracking-tight text-lg">gitreport</span>
         </div>
 
-        {/* Headline */}
-        <div className="text-center">
-          <h1
-            className="font-display font-bold text-[28px] leading-tight mb-2"
-            style={{ color: '#E6EDF3' }}
-          >
-            Your GitHub story,<br />told monthly.
+        <div className="login-stagger max-w-md mt-16 md:mt-0">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-medium tracking-tighter leading-[1.1] mb-6">
+            Your GitHub story,<br />
+            automated.
           </h1>
-          <p className="font-mono text-[13px]" style={{ color: '#8B949E' }}>
-            Connect GitHub to generate your developer report.
+          
+          <p className="text-lg text-[var(--text-secondary)] mb-10 leading-relaxed max-w-[40ch]">
+            Connect your repositories and let our narrative engine analyze your impact. No manual updates required.
+          </p>
+
+          {authError && (
+            <div 
+              className="mb-8 p-4 rounded-xl text-sm font-mono"
+              style={{
+                background: '#2D1010',
+                border: '1px solid #F8514933',
+                color: '#F85149',
+              }}
+              role="alert"
+            >
+              {errorMessage[authError] ?? 'Authentication failed. Please try again.'}
+            </div>
+          )}
+
+          <button
+            onClick={login}
+            disabled={isLoading}
+            className="group relative flex items-center justify-center gap-3 w-full sm:w-auto px-8 py-4 bg-white text-black rounded-full font-medium text-base transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
+          >
+            <GithubLogo size={22} weight="fill" />
+            <span>{isLoading ? 'Checking session…' : 'Continue with GitHub'}</span>
+          </button>
+          
+          <p className="mt-8 text-xs text-[var(--text-tertiary)] max-w-[35ch] leading-relaxed">
+            By continuing, you allow GitReport to read your public repository metrics safely.
           </p>
         </div>
-
-        {/* Error state */}
-        {authError && (
-          <div
-            className="w-full px-4 py-3 rounded-lg font-mono text-[12px]"
-            style={{
-              background: '#2D1010',
-              border:     '1px solid #F8514933',
-              color:      '#F85149',
-            }}
-            role="alert"
-          >
-            {errorMessage[authError] ?? 'Authentication failed. Please try again.'}
-          </div>
-        )}
-
-        {/* GitHub CTA */}
-        <button
-          id="login-github-btn"
-          onClick={login}
-          disabled={isLoading}
-          className="w-full flex items-center justify-center gap-3 px-6 py-3.5 rounded-xl font-mono text-[13px] font-medium transition-all duration-150"
-          style={{
-            background: isLoading ? '#1C2128' : '#21262D',
-            color:      isLoading ? '#484F58' : '#E6EDF3',
-            border:     '1px solid #30363D',
-            cursor:     isLoading ? 'not-allowed' : 'pointer',
-          }}
-          onMouseEnter={e => {
-            if (!isLoading) {
-              e.currentTarget.style.background   = '#30363D'
-              e.currentTarget.style.borderColor  = '#58A6FF44'
-            }
-          }}
-          onMouseLeave={e => {
-            if (!isLoading) {
-              e.currentTarget.style.background   = '#21262D'
-              e.currentTarget.style.borderColor  = '#30363D'
-            }
-          }}
-        >
-          {/* GitHub mark */}
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
-          </svg>
-          {isLoading ? 'Checking session…' : 'Continue with GitHub'}
-        </button>
-
-        <p className="font-mono text-[11px] text-center" style={{ color: '#484F58' }}>
-          GitReport only reads public activity by default.<br />
-          Private repo analysis requires repo scope.
-        </p>
       </div>
+
+      {/* RIGHT: CINEMATIC MEDIA (Hidden on Mobile) */}
+      <div className="hidden md:block w-1/2 relative overflow-hidden" ref={rightPanelRef}>
+        {/* Darkening edge gradients */}
+        <div className="absolute inset-0 z-10 bg-gradient-to-r from-[var(--canvas)] via-transparent to-transparent opacity-100" />
+        <div className="absolute inset-0 z-10 bg-gradient-to-tr from-[var(--canvas)] via-[var(--canvas)]/20 to-transparent opacity-80" />
+        
+        {/* Violet Spotlight Wash */}
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-[#6a4cf5] opacity-20 blur-[120px] rounded-full translate-x-1/3 -translate-y-1/3 z-10 pointer-events-none" />
+        
+        {/* Cinematic Background Image */}
+        <img 
+          ref={imageRef}
+          src="https://picsum.photos/seed/gitreport/1920/1080" 
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover grayscale mix-blend-luminosity contrast-125 opacity-50"
+        />
+        
+        {/* Liquid Glass Refraction Component */}
+        <div className="absolute bottom-12 right-12 z-20 p-6 rounded-[2rem] bg-white/5 border border-white/10 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-2xl max-w-sm login-stagger">
+          <div className="flex items-center gap-4 mb-5">
+            <div className="w-12 h-12 rounded-full bg-black/50 overflow-hidden border border-white/10 flex-shrink-0">
+              <img src="https://picsum.photos/seed/dev/100/100" alt="" className="w-full h-full object-cover opacity-80" />
+            </div>
+            <div>
+              <p className="text-white font-medium text-sm">Monthly Digest Ready</p>
+              <p className="text-white/50 text-xs font-mono mt-0.5">Report #42 generated</p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+              <div className="h-full w-3/4 bg-white/80 rounded-full" />
+            </div>
+            <div className="h-1.5 w-4/5 bg-white/10 rounded-full" />
+            <div className="h-1.5 w-2/3 bg-white/10 rounded-full" />
+          </div>
+        </div>
+      </div>
+
     </div>
   )
 }

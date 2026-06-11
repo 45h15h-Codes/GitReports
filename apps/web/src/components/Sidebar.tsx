@@ -29,8 +29,7 @@ export function Sidebar() {
 
   return (
     <aside
-      className="fixed left-0 top-0 h-screen w-[260px] flex flex-col z-20"
-      style={{ background: '#161B22', borderRight: '1px solid #21262D' }}
+      className="fixed left-0 top-0 h-screen w-[260px] flex flex-col z-20 bg-[#090909] border-r border-white/10"
     >
       {/* Logo */}
       <div className="px-6 py-5 flex items-center gap-2.5" style={{ borderBottom: '1px solid #21262D' }}>

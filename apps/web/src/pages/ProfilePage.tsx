@@ -1,12 +1,19 @@
-import { useAuth }              from '../context/AuthContext'
-import { Link }                from 'react-router-dom'
-import { PERSONA_META }        from '../utils/persona'
-import { useQuery }            from '@tanstack/react-query'
-import { getReports }          from '../lib/api'
+import { useRef } from 'react'
+import gsap from 'gsap'
+import { useGSAP } from '@gsap/react'
+import { useAuth } from '../context/AuthContext'
+import { Link } from 'react-router-dom'
+import { PERSONA_META } from '../utils/persona'
+import { useQuery } from '@tanstack/react-query'
+import { getReports } from '../lib/api'
 import type { ReportListItem } from '../types/api'
 import type { DeveloperPersona } from '../types/api'
+import { GitBranch, ExternalLink, Activity, FileText } from 'lucide-react'
+
+gsap.registerPlugin(useGSAP)
 
 export function ProfilePage() {
+  const containerRef = useRef<HTMLDivElement>(null)
   const { user } = useAuth()
 
   const { data } = useQuery({
@@ -27,153 +34,137 @@ export function ProfilePage() {
 
   const meta = dominantPersona ? PERSONA_META[dominantPersona] : null
 
-  return (
-    <div className="flex flex-col gap-6 p-7 min-h-screen" style={{ background: '#0D1117' }}>
+  useGSAP(() => {
+    gsap.from('.gsap-animate', {
+      opacity: 0,
+      y: 20,
+      duration: 0.6,
+      stagger: 0.05,
+      ease: 'power3.out',
+      clearProps: 'all'
+    })
+  }, { scope: containerRef, dependencies: [completed.length] })
 
+  return (
+    <div ref={containerRef} className="flex flex-col gap-8 p-6 md:p-12 min-h-screen bg-[#090909] text-white selection:bg-[#0099ff] selection:text-white">
       {/* Header */}
-      <div>
-        <div
-          className="font-mono text-[11px] font-medium uppercase tracking-widest mb-1"
-          style={{ color: '#484F58', letterSpacing: '0.1em' }}
-        >
+      <div className="gsap-animate flex flex-col gap-2 border-b border-white/5 pb-8">
+        <div className="text-[13px] font-medium text-[#888888] uppercase tracking-[0.2em]">
           Account
         </div>
-        <h1
-          className="font-display font-bold text-[28px] leading-tight"
-          style={{ color: '#E6EDF3' }}
-        >
+        <h1 className="text-4xl md:text-5xl font-bold tracking-[-0.04em] leading-none text-white">
           Profile
         </h1>
       </div>
 
-      {/* Profile card */}
-      <div
-        className="rounded-xl p-6 flex items-center gap-5"
-        style={{ background: '#161B22', border: '1px solid #21262D' }}
-      >
-        {user?.avatarUrl ? (
-          <img
-            src={user.avatarUrl}
-            alt={user.displayName ?? user.username}
-            className="w-16 h-16 rounded-full shrink-0"
-            style={{ border: `2px solid ${meta?.color ?? '#30363D'}` }}
-          />
-        ) : (
-          <div
-            className="w-16 h-16 rounded-full flex items-center justify-center font-display font-bold text-[24px] shrink-0"
-            style={{ background: '#1C2128', color: meta?.color ?? '#8B949E' }}
-          >
-            {(user?.displayName ?? user?.username ?? '?')[0]?.toUpperCase()}
-          </div>
-        )}
-        <div>
-          <div
-            className="font-display font-bold text-[20px]"
-            style={{ color: '#E6EDF3' }}
-          >
-            {user?.displayName ?? user?.username}
-          </div>
-          <div className="font-mono text-[12px] mt-0.5" style={{ color: '#8B949E' }}>
-            @{user?.username}
-          </div>
-          {dominantPersona && meta && (
-            <div className="mt-2">
-              <span
-                className="font-mono text-[11px] px-2.5 py-1 rounded-full"
-                style={{
-                  color:      meta.color,
-                  background: meta.bg,
-                  border:     `1px solid ${meta.color}33`,
-                }}
-              >
-                {dominantPersona}
-              </span>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {/* Profile card */}
+        <div className="gsap-animate md:col-span-2 rounded-[32px] p-8 flex items-center gap-6 bg-[#141414] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)] relative overflow-hidden">
+          {/* Subtle gradient background based on persona */}
+          {meta && (
+            <div 
+              className="absolute -top-24 -right-24 w-64 h-64 rounded-full blur-[80px] opacity-20 pointer-events-none"
+              style={{ background: meta.color }}
+            />
+          )}
+
+          {user?.avatarUrl ? (
+            <img
+              src={user.avatarUrl}
+              alt={user.displayName ?? user.username}
+              className="w-20 h-20 rounded-full shrink-0 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)] object-cover"
+            />
+          ) : (
+            <div className="w-20 h-20 rounded-full flex items-center justify-center text-3xl font-bold shrink-0 bg-[#222222] text-[#888888] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)]">
+              {(user?.displayName ?? user?.username ?? '?')[0]?.toUpperCase()}
             </div>
           )}
+          <div className="flex flex-col items-start z-10">
+            <h2 className="text-2xl font-bold tracking-tight text-white mb-1">
+              {user?.displayName ?? user?.username}
+            </h2>
+            <div className="text-[14px] text-[#888888] font-medium">
+              @{user?.username}
+            </div>
+            {dominantPersona && meta && (
+              <div className="mt-3">
+                <span
+                  className="text-[11px] font-medium px-3 py-1.5 rounded-full uppercase tracking-wider"
+                  style={{
+                    color:      meta.color,
+                    background: `${meta.color}15`,
+                    boxShadow:  `inset 0 0 0 1px ${meta.color}30`,
+                  }}
+                >
+                  {dominantPersona}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-4">
-        {[
-          { label: 'Reports Generated', value: completed.length },
-          { label: 'Months Tracked',    value: completed.length },
-        ].map(stat => (
-          <div
-            key={stat.label}
-            className="rounded-xl p-5"
-            style={{ background: '#161B22', border: '1px solid #21262D' }}
-          >
-            <div
-              className="font-display font-bold text-[32px] leading-none"
-              style={{ color: '#E6EDF3', fontVariantNumeric: 'tabular-nums' }}
+        {/* Stats */}
+        <div className="gsap-animate rounded-[32px] p-8 bg-[#141414] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)] flex flex-col justify-between">
+          <div className="flex items-center gap-3 text-[#888888] mb-6">
+            <FileText size={18} />
+            <span className="text-[13px] font-medium uppercase tracking-wider">Reports Generated</span>
+          </div>
+          <div className="text-6xl font-bold tracking-tighter text-white">
+            {completed.length}
+          </div>
+        </div>
+
+        <div className="gsap-animate rounded-[32px] p-8 bg-[#141414] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)] flex flex-col justify-between">
+          <div className="flex items-center gap-3 text-[#888888] mb-6">
+            <Activity size={18} />
+            <span className="text-[13px] font-medium uppercase tracking-wider">Months Tracked</span>
+          </div>
+          <div className="text-6xl font-bold tracking-tighter text-white">
+            {completed.length}
+          </div>
+        </div>
+
+        {/* Public profile link */}
+        {user?.username && (
+          <div className="gsap-animate md:col-span-2 rounded-[24px] p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#141414] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)] hover:bg-[#1a1a1a] transition-colors">
+            <div className="flex flex-col gap-1">
+              <div className="text-[15px] font-semibold text-white">
+                Public Profile
+              </div>
+              <div className="text-[13px] text-[#888888]">
+                gitreport.dev/u/{user.username}
+              </div>
+            </div>
+            <Link
+              to={`/u/${user.username}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-[13px] font-medium px-5 py-2.5 rounded-full bg-white text-black transition-transform duration-150 active:scale-95"
             >
-              {stat.value}
-            </div>
-            <div className="font-mono text-[11px] mt-1" style={{ color: '#484F58' }}>
-              {stat.label}
-            </div>
+              View Profile <ExternalLink size={14} />
+            </Link>
           </div>
-        ))}
-      </div>
+        )}
 
-      {/* Public profile link */}
-      {user?.username && (
-        <div
-          className="rounded-xl p-5 flex items-center justify-between"
-          style={{ background: '#161B22', border: '1px solid #21262D' }}
-        >
-          <div>
-            <div className="font-mono text-[13px] font-medium" style={{ color: '#E6EDF3' }}>
-              Public Profile
+        {/* GitHub connection info */}
+        <div className="gsap-animate md:col-span-2 rounded-[24px] p-6 bg-[#141414] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-[#222222] flex items-center justify-center shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)]">
+              <GitBranch size={20} className="text-white" />
             </div>
-            <div className="font-mono text-[11px] mt-0.5" style={{ color: '#484F58' }}>
-              gitreport.dev/u/{user.username}
-            </div>
-          </div>
-          <Link
-            to={`/u/${user.username}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-mono text-[11px] px-3 py-1.5 rounded-lg transition-all duration-150"
-            style={{
-              color:          '#58A6FF',
-              background:     '#1F3450',
-              border:         '1px solid #58A6FF33',
-              textDecoration: 'none',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#1A3060' }}
-            onMouseLeave={e => { e.currentTarget.style.background = '#1F3450' }}
-          >
-            View →
-          </Link>
-        </div>
-      )}
-
-      {/* GitHub connection info */}
-      <div
-        className="rounded-xl p-5"
-        style={{ background: '#161B22', border: '1px solid #21262D' }}
-      >
-        <div className="font-mono text-[11px] uppercase tracking-widest mb-4" style={{ color: '#484F58' }}>
-          Connected Account
-        </div>
-        <div className="flex items-center gap-3">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B949E" aria-hidden="true">
-            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
-          </svg>
-          <div>
-            <div className="font-mono text-[13px]" style={{ color: '#E6EDF3' }}>
-              GitHub
-            </div>
-            <div className="font-mono text-[11px]" style={{ color: '#8B949E' }}>
-              @{user?.username} · Connected
+            <div className="flex flex-col">
+              <div className="text-[15px] font-semibold text-white">
+                GitHub Account
+              </div>
+              <div className="text-[13px] text-[#888888]">
+                @{user?.username}
+              </div>
             </div>
           </div>
-          <div
-            className="ml-auto w-2 h-2 rounded-full"
-            style={{ background: '#3FB950' }}
-          />
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#1a1a1a] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)]">
+            <span className="w-2 h-2 rounded-full bg-[#00ff88] shadow-[0_0_8px_rgba(0,255,136,0.4)]" />
+            <span className="text-[11px] font-medium uppercase tracking-wider text-[#888888]">Connected</span>
+          </div>
         </div>
       </div>
     </div>

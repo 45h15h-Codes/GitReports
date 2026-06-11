@@ -10,7 +10,7 @@ import { GenerateReportButton } from './GenerateReportButton'
 export function NoReportsState() {
   const { user } = useAuth()
   return (
-    <div className="flex flex-col gap-6 p-7 min-h-screen" style={{ background: 'var(--bg-base)' }}>
+    <div className="flex flex-col gap-8 p-8 min-h-screen bg-[#090909]">
       <div className="flex flex-col items-center justify-center flex-1 gap-6 mt-24">
         <div
           className="w-16 h-16 rounded-2xl flex items-center justify-center"
@@ -20,13 +20,12 @@ export function NoReportsState() {
         </div>
         <div className="text-center">
           <h1
-            className="font-display font-bold text-[24px] mb-2"
-            style={{ color: 'var(--text-primary)' }}
+            className="font-display font-bold text-[24px] mb-2 text-white"
           >
             No reports yet
             {user?.displayName ? `, ${user.displayName.split(' ')[0]}` : ''}
           </h1>
-          <p className="font-mono text-[13px] mb-6" style={{ color: 'var(--text-secondary)' }}>
+          <p className="font-mono text-[13px] mb-6 text-white/60">
             Generate your first monthly developer report from your GitHub activity.
           </p>
           <GenerateReportButton variant="primary" />

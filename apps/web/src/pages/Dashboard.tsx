@@ -60,20 +60,20 @@ export function Dashboard() {
   // ── No report for selected period (404)
   if (!report) {
     return (
-      <div className="flex flex-col gap-6 p-7 min-h-screen" style={{ background: 'var(--bg-base)' }}>
+      <div className="flex flex-col gap-8 p-8 min-h-screen bg-[#090909]">
         <div className="flex items-start justify-between flex-wrap gap-4">
           <div>
-            <div className="font-mono text-[11px] font-medium uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)', letterSpacing: '0.1em' }}>
+            <div className="font-mono text-[11px] font-medium uppercase tracking-[0.15em] text-white/50 mb-2">
               Monthly Report
             </div>
-            <h1 className="font-display font-bold text-[28px] leading-tight" style={{ color: 'var(--text-primary)' }}>
+            <h1 className="font-display font-medium text-4xl tracking-tight text-white">
               {formatPeriod(selectedPeriod)}
             </h1>
           </div>
           <MonthSelector months={months} selected={selectedPeriod} onSelect={setSelectedPeriod} />
         </div>
         <div className="flex flex-col items-center justify-center flex-1 gap-4 mt-16">
-          <p className="font-mono text-[13px]" style={{ color: 'var(--text-secondary)' }}>
+          <p className="font-mono text-[13px] text-white/60">
             No report for {formatPeriod(selectedPeriod)} yet.
           </p>
           <GenerateReportButton period={selectedPeriod} variant="primary" onSuccess={() => {
@@ -109,19 +109,17 @@ export function Dashboard() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-7 min-h-screen" style={{ background: 'var(--bg-base)' }}>
+    <div className="flex flex-col gap-8 p-8 min-h-screen bg-[#090909]">
       {/* Page header */}
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <div
-            className="font-mono text-[11px] font-medium uppercase tracking-widest mb-1"
-            style={{ color: 'var(--text-muted)', letterSpacing: '0.1em' }}
+            className="font-mono text-[11px] font-medium uppercase tracking-[0.15em] text-white/50 mb-2"
           >
             Monthly Report
           </div>
           <h1
-            className="font-display font-bold text-[28px] leading-tight"
-            style={{ color: 'var(--text-primary)' }}
+            className="font-display font-medium text-4xl tracking-tight text-white"
           >
             {formatPeriod(selectedPeriod)}
           </h1>

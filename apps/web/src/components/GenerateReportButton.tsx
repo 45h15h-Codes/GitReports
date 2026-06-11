@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef }     from 'react'
 import { useMutation, useQueryClient }     from '@tanstack/react-query'
-import { Lightning, ArrowClockwise }       from '@phosphor-icons/react'
+import { Zap, RefreshCw, Check }             from 'lucide-react'
 import { generateReport, streamReportStatus } from '../lib/api'
 import type { NarrativeStatus }            from '../types/api'
 
@@ -27,7 +27,7 @@ export function GenerateReportButton({
   const qc               = useQueryClient()
   const [state, setState] = useState<ButtonState>('idle')
   const streamRef        = useRef<(() => void) | null>(null)
-  const timeoutRef       = useRef<NodeJS.Timeout | null>(null)
+  const timeoutRef       = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   function stopPolling() {
     if (streamRef.current) streamRef.current()
@@ -59,7 +59,7 @@ export function GenerateReportButton({
     
     streamRef.current = streamReportStatus(
       p,
-      (data) => handleStatusUpdate(data.narrativeStatus, p),
+      (data: any) => handleStatusUpdate(data.narrativeStatus as NarrativeStatus, p),
       () => {
         // stream error, just let timeout handle it
       }
@@ -74,7 +74,7 @@ export function GenerateReportButton({
   const mutation = useMutation({
     mutationFn: () => generateReport(period),
     onMutate:   () => setState('generating'),
-    onSuccess:  (data) => {
+    onSuccess:  (data: any) => {
       if (data.cached && data.report) {
         // 200 — cached complete report, no polling needed
         const p = data.report.period
@@ -108,7 +108,7 @@ export function GenerateReportButton({
     idle:       'Generate Report',
     generating: 'Fetching data…',
     polling:    'Generating narrative…',
-    done:       'Report ready ✓',
+    done:       'Report ready',
     timeout:    'Still working — check back soon',
     error:      'Failed — retry?',
   }
@@ -152,8 +152,10 @@ export function GenerateReportButton({
       aria-label={label[state]}
     >
       {isPending
-        ? <ArrowClockwise size={13} className="animate-spin" />
-        : <Lightning size={13} weight="duotone" />}
+        ? <RefreshCw size={13} className="animate-spin" />
+        : state === 'done'
+          ? <Check size={13} />
+          : <Zap size={13} />}
       {label[state]}
     </button>
   )

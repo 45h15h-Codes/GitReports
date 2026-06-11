@@ -35,7 +35,7 @@ export function LanguageBreakdown({ languages }: LanguageBreakdownProps) {
       <div className="flex flex-col gap-2.5">
         {sorted.map(([lang, pct]) => (
           <div key={lang} className="flex items-center gap-3">
-            <span className="font-mono text-[12px] w-20 shrink-0" style={{ color: 'var(--text-secondary)' }}>
+            <span className="font-mono text-[12px] w-20 shrink-0 text-white/60">
               {lang}
             </span>
             <div className="flex-1 h-1.5 rounded-full" style={{ background: 'var(--border-default)' }}>

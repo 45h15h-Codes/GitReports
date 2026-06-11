@@ -12,8 +12,7 @@ export function MonthSelector({ months, selected, onSelect }: MonthSelectorProps
 
   return (
     <div
-      className="flex items-center gap-1 p-1 rounded-lg"
-      style={{ background: '#161B22', border: '1px solid #21262D' }}
+      className="flex items-center gap-1 p-1 rounded-lg bg-white/[0.02] border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-xl transition-all duration-300 hover:bg-white/[0.04]"
       role="group"
       aria-label="Select reporting month"
     >

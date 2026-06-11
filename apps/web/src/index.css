@@ -3,6 +3,7 @@
 @import "@fontsource/fraunces/700.css";
 @import "@fontsource/dm-mono/400.css";
 @import "@fontsource/dm-mono/500.css";
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -12,30 +13,44 @@
 /* Dark theme — true black base */
 :root,
 [data-theme="dark"] {
-  --bg-base:        #000000;
-  --bg-surface:     #0A0A0A;
-  --bg-elevated:    #111111;
-  --bg-overlay:     #1A1A1A;
+  --bg-base: #000000;
+  --bg-surface: #0a0a0a;
+  --bg-elevated: #111111;
+  --bg-overlay: #1a1a1a;
 
-  --border-subtle:  #1F1F1F;
-  --border-default: #2A2A2A;
-  --border-strong:  #3A3A3A;
+  --border-subtle: #1f1f1f;
+  --border-default: #2a2a2a;
+  --border-strong: #3a3a3a;
 
-  --text-primary:   #F0F0F0;
-  --text-secondary: #8A8A8A;
-  --text-muted:     #444444;
+  --text-primary: #f0f0f0;
+  --text-secondary: #8a8a8a;
+  --text-muted: #444444;
 
-  --accent-blue:    #58A6FF;
-  --accent-green:   #3FB950;
-  --accent-yellow:  #E3B341;
-  --accent-purple:  #BC8CFF;
-  --accent-orange:  #D85A30;
+  --accent-blue: #58a6ff;
+  --accent-green: #3fb950;
+  --accent-yellow: #e3b341;
+  --accent-purple: #bc8cff;
+  --accent-orange: #d85a30;
 
   /* PRD §4.4 reserved signal colors */
-  --signal-public:       #58a6ff;
-  --signal-public-fill:  #0D1F33;
-  --signal-private:      #bc8cff;
-  --signal-private-fill: #130F1E;
+  --signal-public: #58a6ff;
+  --signal-public-fill: #0d1f33;
+  --signal-private: #bc8cff;
+  --signal-private-fill: #130f1e;
+
+  /* DESIGN.md Tokens */
+  --canvas: #090909;
+  --surface-1: #141414;
+  --surface-2: #1c1c1c;
+  --hairline: #262626;
+  --hairline-soft: #1a1a1a;
+  --ink: #ffffff;
+  --ink-muted: #999999;
+  --accent-framer: #0099ff;
+  --gradient-magenta: #d44df0;
+  --gradient-violet: #6a4cf5;
+  --gradient-orange: #ff7a3d;
+  --gradient-coral: #ff5577;
 
   color-scheme: dark;
 }
@@ -43,65 +58,80 @@
 /* Light theme — exact GitHub Primer light-default palette (primer.style/primitives) */
 [data-theme="light"] {
   /* Backgrounds — github.com canvas hierarchy */
-  --bg-base:        #ffffff;   /* bgColor-default  */
-  --bg-surface:     #f6f8fa;   /* bgColor-muted     */
-  --bg-elevated:    #eaeef2;   /* bgColor-inset     */
-  --bg-overlay:     #d0d7de;   /* bgColor-neutral-muted */
+  --bg-base: #ffffff; /* bgColor-default  */
+  --bg-surface: #f6f8fa; /* bgColor-muted     */
+  --bg-elevated: #eaeef2; /* bgColor-inset     */
+  --bg-overlay: #d0d7de; /* bgColor-neutral-muted */
 
   /* Borders — github.com exact values */
-  --border-subtle:  #d0d7de;   /* borderColor-default  */
-  --border-default: #afb8c1;   /* borderColor-muted    */
-  --border-strong:  #8c959f;   /* borderColor-strong   */
+  --border-subtle: #d0d7de; /* borderColor-default  */
+  --border-default: #afb8c1; /* borderColor-muted    */
+  --border-strong: #8c959f; /* borderColor-strong   */
 
   /* Text — primer fgColor tokens */
-  --text-primary:   #1f2328;   /* fgColor-default  */
-  --text-secondary: #59636e;   /* fgColor-muted    */
-  --text-muted:     #818b98;   /* fgColor-neutral  */
+  --text-primary: #1f2328; /* fgColor-default  */
+  --text-secondary: #59636e; /* fgColor-muted    */
+  --text-muted: #818b98; /* fgColor-neutral  */
 
   /* Accent / action colors — github.com light */
-  --accent-blue:    #0969da;   /* fgColor-accent   */
-  --accent-green:   #1a7f37;   /* fgColor-success  */
-  --accent-yellow:  #9a6700;   /* fgColor-attention */
-  --accent-purple:  #8250df;   /* fgColor-done     */
-  --accent-orange:  #bc4c00;   /* fgColor-severe   */
+  --accent-blue: #0969da; /* fgColor-accent   */
+  --accent-green: #1a7f37; /* fgColor-success  */
+  --accent-yellow: #9a6700; /* fgColor-attention */
+  --accent-purple: #8250df; /* fgColor-done     */
+  --accent-orange: #bc4c00; /* fgColor-severe   */
 
   /* Signal colors — primer reserved */
-  --signal-public:       #0969da;
-  --signal-public-fill:  #ddf4ff;
-  --signal-private:      #8250df;
+  --signal-public: #0969da;
+  --signal-public-fill: #ddf4ff;
+  --signal-private: #8250df;
   --signal-private-fill: #fbefff;
 
   color-scheme: light;
 }
 
 /* ─── Base ───────────────────────────────────────────────────────────────── */
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 body {
   background-color: var(--bg-base);
-  color:            var(--text-primary);
-  font-family:      "DM Mono", monospace;
-  margin:           0;
+  color: var(--text-primary);
+  font-family: "Outfit", "DM Mono", monospace;
+  margin: 0;
   -webkit-font-smoothing: antialiased;
-  transition: background-color 0.25s ease, color 0.25s ease;
+  transition:
+    background-color 0.25s ease,
+    color 0.25s ease;
 }
 
 /* ─── Scrollbar ──────────────────────────────────────────────────────────── */
-::-webkit-scrollbar         { width: 6px; }
-::-webkit-scrollbar-track   { background: var(--bg-base); }
-::-webkit-scrollbar-thumb   { background: var(--border-default); border-radius: 3px; }
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-base);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: 3px;
+}
 
 /* ─── Skeleton shimmer ───────────────────────────────────────────────────── */
 @keyframes shimmer {
-  0%   { background-position: -400px 0; }
-  100% { background-position:  400px 0; }
+  0% {
+    background-position: -400px 0;
+  }
+  100% {
+    background-position: 400px 0;
+  }
 }
 .skeleton {
   background: linear-gradient(
     90deg,
-    var(--bg-surface)  25%,
+    var(--bg-surface) 25%,
     var(--bg-elevated) 50%,
-    var(--bg-surface)  75%
+    var(--bg-surface) 75%
   );
   background-size: 400px 100%;
   animation: shimmer 1.4s ease infinite;
@@ -110,8 +140,10 @@ body {
 
 /* ─── Reduced motion ─────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration:  0.01ms !important;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
 }
@@ -119,24 +151,23 @@ body {
 /* ─── Dashboard button hover states (D.2) ──────────────────────────────── */
 .dashboard-action-btn:hover {
   background: var(--bg-overlay) !important;
-  color:      var(--text-primary) !important;
+  color: var(--text-primary) !important;
 }
 .dashboard-challenge-btn:hover {
-  background: #3D2010 !important;
-  color:      #E87040 !important;
+  background: #3d2010 !important;
+  color: #e87040 !important;
 }
 
 /* ─── Sidebar nav hover states (D.2) ────────────────────────────────────── */
 .sidebar-nav-link:not([aria-current="page"]):hover {
-  background: #1C2128 !important;
-  color:      #E6EDF3 !important;
+  background: #1c2128 !important;
+  color: #e6edf3 !important;
 }
 .sidebar-action-btn:hover {
-  background: #1C2128 !important;
-  color:      #E6EDF3 !important;
+  background: #1c2128 !important;
+  color: #e6edf3 !important;
 }
 .sidebar-logout-btn:hover {
-  background: #2D1010 !important;
-  color:      #F85149 !important;
+  background: #2d1010 !important;
+  color: #f85149 !important;
 }
-

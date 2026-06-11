@@ -18,7 +18,7 @@ export function useMonthlyReport(period: string | undefined): UseMonthlyReportRe
     queryKey: ['report', period],
     queryFn:  async () => {
       const res = await getReport(period!)
-      return res.report
+      return (res as any).report
     },
     enabled:  !!period,
     // Short stale time — dashboard needs fresh data after report generation

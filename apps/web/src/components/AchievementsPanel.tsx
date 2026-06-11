@@ -1,5 +1,5 @@
 import { useEffect, useState }   from 'react'
-import { Trophy }                from '@phosphor-icons/react'
+import { Trophy, Medal }               from 'lucide-react'
 import { api }                   from '../lib/api'
 import type { AchievementResponse } from '../lib/api'
 import { AchievementBadge }      from './AchievementBadge'
@@ -21,8 +21,7 @@ export function AchievementsPanel() {
 
   return (
     <div
-      className="rounded-xl p-5"
-      style={{ background: '#161B22', border: '1px solid #21262D' }}
+      className="rounded-[2rem] p-5 bg-white/[0.02] border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-xl transition-all duration-300 hover:bg-white/[0.04]"
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
@@ -33,7 +32,7 @@ export function AchievementsPanel() {
           Achievements
         </div>
         <div className="flex items-center gap-1.5">
-          <Trophy size={13} weight="duotone" color="#E3B341" />
+          <Trophy size={13} color="#E3B341" strokeWidth={2.5} />
           <span className="font-mono text-[11px]" style={{ color: '#8B949E' }}>
             {earned.length}/{totalDefined}
           </span>
@@ -86,7 +85,7 @@ export function AchievementsPanel() {
                           filter:     'grayscale(1)',
                         }}
                       >
-                        🏅
+                        <Medal size={20} color="#6B7280" strokeWidth={2} />
                       </div>
                       <div
                         className="font-mono text-[10px]"

@@ -5,7 +5,7 @@
 
 export function DashboardSkeleton() {
   return (
-    <div className="flex flex-col gap-6 p-7 min-h-screen animate-pulse" style={{ background: 'var(--bg-base)' }}>
+    <div className="flex flex-col gap-8 p-8 min-h-screen animate-pulse bg-[#090909]">
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div className="flex flex-col gap-2">
           <div className="h-3 w-24 rounded" style={{ background: 'var(--border-default)' }} />

@@ -1,17 +1,32 @@
 import { motion }              from 'framer-motion'
 import type { AchievementResponse } from '../lib/api'
 
-const ACHIEVEMENT_ICONS: Record<string, string> = {
-  first_report:           '⚡',
-  century_commits:        '💯',
-  double_century_commits: '🚀',
-  streak_week:            '🔥',
-  streak_fortnight:       '🔥',
-  streak_month:           '🏔️',
-  polyglot:               '🌐',
-  focused:                '🎯',
-  open_source_month:      '🌍',
-  comeback:               '📈',
+import { Zap, Star, Rocket, Flame, Mountain, Globe, Target, TrendingUp, Medal } from 'lucide-react'
+
+const ACHIEVEMENT_ICONS: Record<string, React.ElementType> = {
+  first_report:           Zap,
+  century_commits:        Star,
+  double_century_commits: Rocket,
+  streak_week:            Flame,
+  streak_fortnight:       Flame,
+  streak_month:           Mountain,
+  polyglot:               Globe,
+  focused:                Target,
+  open_source_month:      Globe,
+  comeback:               TrendingUp,
+}
+
+const ICON_COLORS: Record<string, string> = {
+  first_report:           '#FBBF24',
+  century_commits:        '#FBBF24',
+  double_century_commits: '#C084FC',
+  streak_week:            '#F97316',
+  streak_fortnight:       '#EA580C',
+  streak_month:           '#34D399',
+  polyglot:               '#60A5FA',
+  focused:                '#F87171',
+  open_source_month:      '#4ADE80',
+  comeback:               '#4ADE80',
 }
 
 interface AchievementBadgeProps {
@@ -25,7 +40,8 @@ export function AchievementBadge({
   isNew  = false,
   size   = 'md',
 }: AchievementBadgeProps) {
-  const icon = ACHIEVEMENT_ICONS[achievement.achievementId] ?? '🏅'
+  const IconComponent = ACHIEVEMENT_ICONS[achievement.achievementId] ?? Medal
+  const iconColor = ICON_COLORS[achievement.achievementId] ?? '#9CA3AF'
   const isSm = size === 'sm'
 
   return (
@@ -48,7 +64,7 @@ export function AchievementBadge({
           position:   'relative',
         }}
       >
-        {icon}
+        <IconComponent size={isSm ? 18 : 24} color={iconColor} strokeWidth={isSm ? 2.5 : 2} />
         {isNew && (
           <motion.div
             initial={{ scale: 0 }}

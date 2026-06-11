@@ -51,14 +51,8 @@ function ChallengeSkeleton() {
       <main className="max-w-3xl mx-auto px-6 py-10 flex flex-col items-center gap-8">
         <div className="h-8 w-64 rounded" style={{ background: "#21262D" }} />
         <div className="flex gap-8">
-          <div
-            className="w-56 h-80 rounded-xl"
-            style={{ background: "#161B22" }}
-          />
-          <div
-            className="w-56 h-80 rounded-xl"
-            style={{ background: "#161B22" }}
-          />
+          <div className="w-56 h-80 rounded-xl bg-white/5 border border-white/5 backdrop-blur-md" />
+          <div className="w-56 h-80 rounded-xl bg-white/5 border border-white/5 backdrop-blur-md" />
         </div>
       </main>
     </div>
@@ -161,7 +155,7 @@ export function ChallengePage() {
 
   if (!data) return null;
 
-  const { user: challengerUser, report: challengerReport } = data;
+  const { user: challengerUser, report: challengerReport } = data as any;
   const challengerPayload = challengerReport.payload;
 
   // Build a compatible profile shape for ChallengeCard
@@ -403,10 +397,7 @@ export function ChallengePage() {
         </div>
 
         {/* Social share */}
-        <div
-          className="rounded-xl p-5"
-          style={{ background: "#161B22", border: "1px solid #21262D" }}
-        >
+        <div className="rounded-[2rem] p-5 bg-white/[0.02] border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-xl transition-all duration-300 hover:bg-white/[0.04]">
           <div
             className="font-mono text-[11px] uppercase tracking-widest mb-3"
             style={{ color: "#484F58", letterSpacing: "0.08em" }}

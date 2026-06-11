@@ -20,8 +20,8 @@ function SharedReportSkeleton() {
       <main className="max-w-2xl mx-auto px-6 py-10 flex flex-col gap-6">
         <div className="h-8 w-48 rounded" style={{ background: '#21262D' }} />
         <div className="h-4 w-64 rounded" style={{ background: '#21262D' }} />
-        <div className="h-64 rounded-xl" style={{ background: '#161B22' }} />
-        <div className="h-32 rounded-xl" style={{ background: '#161B22' }} />
+        <div className="h-64 rounded-xl bg-white/5 border border-white/5 backdrop-blur-md" />
+        <div className="h-32 rounded-xl bg-white/5 border border-white/5 backdrop-blur-md" />
       </main>
     </div>
   )
@@ -77,7 +77,7 @@ export function SharedReport() {
 
   if (!data) return <SharedReportError message="Report unavailable." />
 
-  const { user: reportUser, report } = data
+  const { user: reportUser, report } = data as any
   const payload = report.payload
 
   return (
@@ -148,7 +148,7 @@ export function SharedReport() {
           </div>
 
           {/* AI summary */}
-          <div className="rounded-xl p-6 mb-6" style={{ background: '#161B22', border: '1px solid #21262D' }}>
+          <div className="rounded-[2rem] p-6 mb-6 bg-white/[0.02] border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-xl transition-all duration-300 hover:bg-white/[0.04]">
             <div className="font-mono text-[11px] uppercase tracking-widest mb-4" style={{ color: '#484F58', letterSpacing: '0.08em' }}>
               Monthly Summary
             </div>
@@ -158,7 +158,7 @@ export function SharedReport() {
           </div>
 
           {/* Public stats */}
-          <div className="rounded-xl p-6 mb-6" style={{ background: '#161B22', border: '1px solid #21262D' }}>
+          <div className="rounded-[2rem] p-6 mb-6 bg-white/[0.02] border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-xl transition-all duration-300 hover:bg-white/[0.04]">
             <div className="font-mono text-[11px] uppercase tracking-widest mb-4" style={{ color: '#484F58', letterSpacing: '0.08em' }}>
               Public Activity
             </div>
@@ -210,13 +210,13 @@ export function SharedReport() {
           </div>
 
           {/* Languages */}
-          <div className="rounded-xl p-6" style={{ background: '#161B22', border: '1px solid #21262D' }}>
+          <div className="rounded-[2rem] p-6 bg-white/[0.02] border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-xl transition-all duration-300 hover:bg-white/[0.04]">
             <div className="font-mono text-[11px] uppercase tracking-widest mb-4" style={{ color: '#484F58', letterSpacing: '0.08em' }}>
               Languages
             </div>
             {Object.entries(payload.languages)
-              .sort((a, b) => b[1] - a[1])
-              .map(([lang, pct]) => (
+              .sort((a: any, b: any) => b[1] - a[1])
+              .map(([lang, pct]: any) => (
                 <div key={lang} className="flex items-center gap-3 mb-2.5">
                   <span className="font-mono text-[12px] w-24 shrink-0" style={{ color: '#8B949E' }}>
                     {lang}
@@ -225,7 +225,7 @@ export function SharedReport() {
                     <div className="h-full rounded-full" style={{ width: `${pct}%`, background: '#58A6FF' }} />
                   </div>
                   <span className="font-mono text-[11px] w-8 text-right shrink-0" style={{ color: '#484F58' }}>
-                    {pct}%
+                    {pct as string}%
                   </span>
                 </div>
               ))}

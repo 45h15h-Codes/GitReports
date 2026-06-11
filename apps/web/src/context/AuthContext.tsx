@@ -50,8 +50,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   })
 
   const value: AuthContextValue = {
-    user:            data?.user ?? null,
-    isAuthenticated: !!data?.user,
+    user:            (data as any)?.user ?? null,
+    isAuthenticated: !!(data as any)?.user,
     isLoading,
     login:           redirectToGitHub,
     logout:          () => logoutMutation.mutate(),

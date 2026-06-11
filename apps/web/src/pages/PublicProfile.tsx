@@ -48,8 +48,7 @@ function ReportTimelineCard({
       style={{ textDecoration: 'none' }}
     >
       <div
-        className="rounded-xl p-4 transition-all duration-150 cursor-pointer"
-        style={{ background: '#161B22', border: '1px solid #21262D' }}
+        className="rounded-[2rem] p-4 transition-all duration-150 cursor-pointer bg-white/[0.02] border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-xl transition-all duration-300 hover:bg-white/[0.04]"
         onMouseEnter={e => { e.currentTarget.style.borderColor = '#30363D' }}
         onMouseLeave={e => { e.currentTarget.style.borderColor = '#21262D' }}
       >
@@ -135,7 +134,7 @@ function PublicProfileSkeleton() {
           </div>
         </div>
         {[1, 2, 3].map(i => (
-          <div key={i} className="h-28 rounded-xl" style={{ background: '#161B22' }} />
+          <div key={i} className="h-28 rounded-xl bg-white/5 border border-white/5 backdrop-blur-md" />
         ))}
       </main>
     </div>
@@ -286,8 +285,7 @@ export function PublicProfile() {
               ].map(stat => (
                 <div
                   key={stat.label}
-                  className="rounded-xl p-4"
-                  style={{ background: '#161B22', border: '1px solid #21262D' }}
+                  className="rounded-[2rem] p-4 bg-white/[0.02] border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-xl transition-all duration-300 hover:bg-white/[0.04]"
                 >
                   <div
                     className="font-display font-bold text-[28px] leading-none"
@@ -309,8 +307,7 @@ export function PublicProfile() {
           {/* Achievements */}
           {achievements.length > 0 && (
             <div
-              className="rounded-xl p-5 mb-8"
-              style={{ background: '#161B22', border: '1px solid #21262D' }}
+              className="rounded-[2rem] p-5 mb-8 bg-white/[0.02] border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-xl transition-all duration-300 hover:bg-white/[0.04]"
             >
               <div
                 className="font-mono text-[11px] uppercase tracking-widest mb-4"
@@ -333,8 +330,7 @@ export function PublicProfile() {
           {/* Monthly report timeline */}
           {reports.length === 0 ? (
             <div
-              className="rounded-xl p-8 text-center"
-              style={{ background: '#161B22', border: '1px solid #21262D' }}
+              className="rounded-[2rem] p-8 text-center bg-white/[0.02] border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-xl transition-all duration-300 hover:bg-white/[0.04]"
             >
               <div className="font-mono text-[13px]" style={{ color: '#484F58' }}>
                 No public reports yet.
